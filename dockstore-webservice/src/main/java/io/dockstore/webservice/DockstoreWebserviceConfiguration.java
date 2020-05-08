@@ -25,12 +25,17 @@ import javax.validation.constraints.NotNull;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.cache.CacheBuilderSpec;
+import com.smoketurner.dropwizard.graphql.GraphQLFactory;
 import io.dropwizard.Configuration;
 import io.dropwizard.client.HttpClientConfiguration;
 import io.dropwizard.db.DataSourceFactory;
 import org.hibernate.validator.constraints.NotEmpty;
 
 public class DockstoreWebserviceConfiguration extends Configuration {
+
+    @NotNull
+    @Valid
+    public final GraphQLFactory graphql = new GraphQLFactory();
 
     @Valid
     @NotNull
@@ -494,6 +499,7 @@ public class DockstoreWebserviceConfiguration extends Configuration {
     /**
      * A list of a additional Google client ids that Dockstore will accept google tokens from. These ids are in addition
      * to getGoogleClientID, and is intended for any external Google clients that Dockstore will accept tokens from.
+     *
      * @return a list of google client ids
      */
     @JsonProperty("externalGoogleClientIdPrefixes")
@@ -535,6 +541,11 @@ public class DockstoreWebserviceConfiguration extends Configuration {
 
     public void setLanguagePluginLocation(String languagePluginLocation) {
         this.languagePluginLocation = languagePluginLocation;
+    }
+
+    @JsonProperty
+    public GraphQLFactory getGraphQLFactory() {
+        return graphql;
     }
 
     /**
@@ -814,7 +825,6 @@ public class DockstoreWebserviceConfiguration extends Configuration {
         public void setGitlabScope(String gitlabScope) {
             this.gitlabScope = gitlabScope;
         }
-
 
         public String getZenodoAuthUrl() {
             return zenodoAuthUrl;

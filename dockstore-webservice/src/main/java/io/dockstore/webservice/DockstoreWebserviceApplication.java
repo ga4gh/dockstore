@@ -34,6 +34,9 @@ import com.fasterxml.jackson.datatype.hibernate5.Hibernate5Module;
 import com.google.common.base.Joiner;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.Lists;
+import com.smoketurner.dropwizard.graphql.GraphQLBundle;
+import com.smoketurner.dropwizard.graphql.GraphQLFactory;
+import graphql.schema.idl.RuntimeWiring;
 import io.dockstore.common.LanguagePluginManager;
 import io.dockstore.language.CompleteLanguageInterface;
 import io.dockstore.language.MinimalLanguageInterface;
@@ -60,6 +63,7 @@ import io.dockstore.webservice.core.VersionMetadata;
 import io.dockstore.webservice.core.Workflow;
 import io.dockstore.webservice.core.WorkflowVersion;
 import io.dockstore.webservice.doi.DOIGeneratorFactory;
+import io.dockstore.webservice.graphqlapi.CollectionDataFetcher;
 import io.dockstore.webservice.helpers.CacheConfigManager;
 import io.dockstore.webservice.helpers.GoogleHelper;
 import io.dockstore.webservice.helpers.MetadataResourceHelper;
@@ -149,6 +153,7 @@ import static org.eclipse.jetty.servlets.CrossOriginFilter.ALLOWED_ORIGINS_PARAM
  * @author dyuen
  */
 public class DockstoreWebserviceApplication extends Application<DockstoreWebserviceConfiguration> {
+    public static Environment environment;
     public static final String GA4GH_API_PATH_V2_BETA = "/api/ga4gh/v2";
     public static final String GA4GH_API_PATH_V2_FINAL = "/ga4gh/trs/v2";
     public static final String GA4GH_API_PATH_V1 = "/api/ga4gh/v1";
@@ -202,7 +207,6 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         });
 
         bootstrap.addBundle(new MultiPartBundle());
-
         if (cache == null) {
             int cacheSize = CACHE_IN_MB * BYTES_IN_KILOBYTE * KILOBYTES_IN_MEGABYTE; // 100 MiB
             final File cacheDir;
@@ -231,6 +235,18 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
                 throw new RuntimeException(factoryException);
             }
         }
+        final GraphQLBundle<DockstoreWebserviceConfiguration> bundle = new GraphQLBundle<>() {
+            @Override
+            public GraphQLFactory getGraphQLFactory(DockstoreWebserviceConfiguration configuration) {
+
+                final GraphQLFactory factory = configuration.getGraphQLFactory();
+                // the RuntimeWiring must be configured prior to the run()
+                // methods being called so the schema is connected properly.
+                factory.setRuntimeWiring(buildWiring(configuration, hibernate));
+                return factory;
+            }
+        };
+        bootstrap.addBundle(bundle);
     }
 
     private static void configureMapper(ObjectMapper objectMapper) {
@@ -392,6 +408,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         // Initialize GitHub App Installation Access Token cache
         CacheConfigManager cacheConfigManager = CacheConfigManager.getInstance();
         cacheConfigManager.initCache();
+        this.environment = environment;
 
     }
 
@@ -427,5 +444,15 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
 
     public HibernateBundle<DockstoreWebserviceConfiguration> getHibernate() {
         return hibernate;
+    }
+
+    private RuntimeWiring buildWiring(DockstoreWebserviceConfiguration configuration, HibernateBundle hibernateBundle) {
+        final CollectionDataFetcher fetcher =
+                new CollectionDataFetcher(hibernateBundle, configuration);
+        final RuntimeWiring wiring =
+                RuntimeWiring.newRuntimeWiring()
+                        .type("Query", typeWiring -> typeWiring.dataFetcher("collection", fetcher))
+                        .build();
+        return wiring;
     }
 }

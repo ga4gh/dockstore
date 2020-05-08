@@ -1,0 +1,66 @@
+schema {
+    query: Query
+}
+
+type Query {
+    collection(collectionID: Float, organizationID: Float): Collection
+}
+
+type Collection {
+    id: Float!
+    name: String
+    description: String
+    displayName: String
+    topic: String
+    organizationID: Float
+    entries: [Entry]
+    aliases: String
+    dbCreateDate: Float
+    dbUpdateDate: Float
+    organizationName: String
+}
+
+type Entry {
+    aliases: String
+    author: String
+    checker_id: Float
+    conceptDoi: String
+    dbCreateDate: Float
+    dbUpdateDate: Float
+    defaultTestParameterFilePath: String
+    defaultVersion: String
+    description: String
+    descriptorType: String
+    descriptorTypeSubclass: String
+    email: String
+    full_workflow_path: String
+    gitUrl: String
+    hasChecker: Boolean
+    id: Float
+    input_file_formats: [String]
+    is_checker: Boolean
+    isPublished: Boolean
+    labels: [Label]
+    entryPath: String
+    lastUpdated: Float
+    last_modified: Float
+    last_modified_date: Float
+    mode: String
+    organization: String
+    output_file_formats: [Label]
+    parent_id: Float
+    path: String
+    repository: String
+    sourceControl: String
+    source_control_provider: String
+    starredUsers: [Label]
+    topicId: Float
+    users: String
+    workflowName: String
+    workflow_path: String
+}
+
+type Label {
+    id: Float
+    value: String
+}
