@@ -22,16 +22,20 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import javax.persistence.EntityGraph;
 import javax.persistence.NoResultException;
 import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
+import javax.persistence.criteria.Path;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
 
 import io.dockstore.common.SourceControl;
 import io.dockstore.webservice.CustomWebApplicationException;
+import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.SourceControlConverter;
 import io.dockstore.webservice.core.Workflow;
+import io.dockstore.webservice.core.database.TrsTool;
 import org.apache.http.HttpStatus;
 import org.hibernate.SessionFactory;
 import org.hibernate.query.Query;
@@ -266,4 +270,62 @@ public class WorkflowDAO extends EntryDAO<Workflow> {
             return Optional.empty();
         }
     }
+    /**
+     *
+     * @param registry
+     * @param organization
+     * @param checker
+     * @param toolname
+     * @param author
+     * @param description
+     * @param limit
+     * @return
+     */
+    public List<Workflow> findAllTrsPublished(final Optional<String> registry, final Optional<String> organization,
+            final Optional<Boolean> checker, final Optional<String> toolname, final Optional<String> author,
+            final Optional<String> description, final int limit) {
+        final CriteriaBuilder cb = currentSession().getCriteriaBuilder();
+        final CriteriaQuery<TrsTool> query = cb.createQuery(TrsTool.class);
+        final Root<BioWorkflow> root = query.from(BioWorkflow.class);
+        query.select(cb.construct(TrsTool.class, root.get("id"), root.get("sourceControl")));
+        Predicate predicate = cb.isTrue(root.get("isPublished"));
+        predicate = andLike(cb, predicate, root.get("organization"), organization);
+        predicate = andLike(cb, predicate, root.get("workflowName"), toolname);
+        predicate = andLike(cb, predicate, root.get("author"), author);
+        predicate = andLike(cb, predicate, root.get("description"), description);
+        if (checker.isPresent()) {
+            predicate = cb.and(predicate, cb.isTrue(root.get("isChecker")));
+        }
+        query.where(predicate);
+        final Query<TrsTool> toolQuery = currentSession().createQuery(query).setMaxResults(registry.isPresent() ? Integer.MAX_VALUE : limit);
+        final List<TrsTool> tools = toolQuery.getResultList();
+        final List<Long> ids = filterByRegistry(registry, tools, limit);
+        final EntityGraph<?> entityGraph = currentSession().getEntityGraph("io.dockstore.webservice.core.Workflow.trs");
+        return list(namedQuery("io.dockstore.webservice.core.Workflow.findByIds").setParameterList("ids", ids)
+                .setHint("javax.persistence.loadgraph", entityGraph));
+        // return list(namedQuery("io.dockstore.webservice.core.Workflow.findByIds").setParameterList("ids", ids));
+    }
+
+    // Filter is on SourceControl().toString(), which returns a value defined
+    // in Java, different from what is stored in the DB. So yeah, don't think we
+    // can do this in SQL. Fortunately, these objects should now be pretty light, and
+    // I assume this filter is rarely used, so typically may not be a major impact.
+    private List<Long> filterByRegistry(final Optional<String> registry, final List<TrsTool> tools, final int limit) {
+        final List<TrsTool> trsTools = registry
+                .map(s -> tools.stream()
+                        .filter(tool -> tool.getSourceControlOrRegistry().toString().contains(s)).limit(limit)
+                        .collect(Collectors.toList())).orElse(tools);
+        return trsTools.stream().map(tool -> tool.getId()).collect(Collectors.toList());
+    }
+
+    private Predicate andLike(CriteriaBuilder cb, Predicate existingPredicate, Path<String> column, Optional<String> value) {
+        return value.map(val -> cb.and(existingPredicate, cb.like(column, wildcardLike(val))))
+                .orElse(existingPredicate);
+    }
+
+    private String wildcardLike(String value) {
+        return '%' + value + '%';
+    }
+
+
 }

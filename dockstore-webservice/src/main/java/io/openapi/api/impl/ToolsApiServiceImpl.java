@@ -263,9 +263,11 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
         String description, String author, Boolean checker, String offset, Integer limit, SecurityContext securityContext,
         ContainerRequestContext value, Optional<User> user) {
 
+        final int actualLimit = MoreObjects.firstNonNull(limit, DEFAULT_PAGE_SIZE);
+
         final Integer hashcode = new HashCodeBuilder().append(id).append(alias).append(toolClass).append(registry).append(organization).append(name)
-            .append(toolname).append(description).append(author).append(checker).append(offset).append(limit)
-            .append(user.orElseGet(User::new).getId()).build();
+                .append(toolname).append(description).append(author).append(checker).append(offset).append(limit)
+                .append(user.orElseGet(User::new).getId()).build();
         final Optional<Response.ResponseBuilder> trsResponses = trsListener.getTrsResponse(hashcode);
         if (trsResponses.isPresent()) {
             return trsResponses.get().build();
@@ -282,10 +284,17 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
             all.add(toolDAO.getGenericEntryByAlias(alias));
         } else {
             if (toolClass == null || COMMAND_LINE_TOOL.equalsIgnoreCase(toolClass)) {
-                all.addAll(toolDAO.findAllPublished());
+                //                all.addAll(toolDAO.findAllPublished());
             }
             if (toolClass == null || WORKFLOW.equalsIgnoreCase(toolClass)) {
-                all.addAll(workflowDAO.findAllPublished());
+                all.addAll(workflowDAO.findAllTrsPublished(
+                        Optional.ofNullable(registry),
+                        Optional.ofNullable(organization),
+                        Optional.ofNullable(checker),
+                        Optional.ofNullable(toolname),
+                        Optional.ofNullable(author),
+                        Optional.ofNullable(description),
+                        actualLimit));
             }
             all.sort(Comparator.comparing(Entry::getGitUrl));
         }
@@ -346,8 +355,6 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
                 results.add(tool);
             }
         }
-
-        final int actualLimit = MoreObjects.firstNonNull(limit, DEFAULT_PAGE_SIZE);
 
         List<List<io.openapi.model.Tool>> pagedResults = Lists.partition(results, actualLimit);
         int offsetInteger = 0;

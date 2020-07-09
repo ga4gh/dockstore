@@ -181,38 +181,38 @@ public final class ToolsImplCommon {
             }
             toolVersion.setId(tool.getId() + ":" + version.getName());
 
-            final Set<SourceFile> sourceFiles = version.getSourceFiles();
-            for (SourceFile file : sourceFiles) {
-                switch (file.getType()) {
-                case DOCKSTORE_CWL:
-                    toolVersion.addDescriptorTypeItem(DescriptorType.CWL);
-                    break;
-                case DOCKSTORE_WDL:
-                    toolVersion.addDescriptorTypeItem(DescriptorType.WDL);
-                    break;
-                case DOCKSTORE_GXFORMAT2:
-                    toolVersion.addDescriptorTypeItem(DescriptorType.GXFORMAT2);
-                    break;
-                // DOCKSTORE-2428 - demo how to add new workflow language
-                //                case DOCKSTORE_SWL:
-                //                    toolVersion.addDescriptorTypeItem(DescriptorType.SWL);
-                //                    break;
-                // TODO not sure how to treat service languages
-                case DOCKSTORE_SERVICE_TEST_JSON:
-                case DOCKSTORE_SERVICE_YML:
-                    toolVersion.addDescriptorTypeItem(DescriptorType.SERVICE);
-                    break;
-                case NEXTFLOW:
-                case NEXTFLOW_CONFIG:
-                    toolVersion.addDescriptorTypeItem(DescriptorType.NFL);
-                    break;
-                case DOCKERFILE:
-                    toolVersion.setContainerfile(true);
-                default:
-                    // Unhandled file type is apparently ignored
-                    break;
-                }
-            }
+            //            final Set<SourceFile> sourceFiles = version.getSourceFiles();
+            //            for (SourceFile file : sourceFiles) {
+            //                switch (file.getType()) {
+            //                case DOCKSTORE_CWL:
+            //                    toolVersion.addDescriptorTypeItem(DescriptorType.CWL);
+            //                    break;
+            //                case DOCKSTORE_WDL:
+            //                    toolVersion.addDescriptorTypeItem(DescriptorType.WDL);
+            //                    break;
+            //                case DOCKSTORE_GXFORMAT2:
+            //                    toolVersion.addDescriptorTypeItem(DescriptorType.GXFORMAT2);
+            //                    break;
+            //                // DOCKSTORE-2428 - demo how to add new workflow language
+            //                //                case DOCKSTORE_SWL:
+            //                //                    toolVersion.addDescriptorTypeItem(DescriptorType.SWL);
+            //                //                    break;
+            //                // TODO not sure how to treat service languages
+            //                case DOCKSTORE_SERVICE_TEST_JSON:
+            //                case DOCKSTORE_SERVICE_YML:
+            //                    toolVersion.addDescriptorTypeItem(DescriptorType.SERVICE);
+            //                    break;
+            //                case NEXTFLOW:
+            //                case NEXTFLOW_CONFIG:
+            //                    toolVersion.addDescriptorTypeItem(DescriptorType.NFL);
+            //                    break;
+            //                case DOCKERFILE:
+            //                    toolVersion.setContainerfile(true);
+            //                default:
+            //                    // Unhandled file type is apparently ignored
+            //                    break;
+            //                }
+            //            }
 
             toolVersion.setDescriptorType(MoreObjects.firstNonNull(toolVersion.getDescriptorType(), Lists.newArrayList()));
             // ensure that descriptor is non-null before adding to list

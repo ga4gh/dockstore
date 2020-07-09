@@ -124,7 +124,7 @@ public abstract class Version<T extends Version> implements Comparable<T> {
     // watch out for https://hibernate.atlassian.net/browse/HHH-3799 if this is set to EAGER
     // TODO: @JsonIgnore this field to catch more places in UI that use it.
     // TODO: Change to FetchType.LAZY
-    @OneToMany(fetch = FetchType.EAGER, orphanRemoval = true, cascade = CascadeType.ALL)
+    @OneToMany(fetch = FetchType.LAZY, orphanRemoval = true, cascade = CascadeType.ALL)
     @JoinTable(name = "version_sourcefile", joinColumns = @JoinColumn(name = "versionid", referencedColumnName = "id"), inverseJoinColumns = @JoinColumn(name = "sourcefileid", referencedColumnName = "id"))
     @ApiModelProperty(value = "Cached files for each version. Includes Dockerfile and Descriptor files", position = 6)
     @Cascade(org.hibernate.annotations.CascadeType.DETACH)
