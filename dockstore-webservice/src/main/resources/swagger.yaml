@@ -86,7 +86,7 @@ paths:
           schema:
             $ref: "#/definitions/WorkflowVersionPathInfo"
       security:
-      - BEARER: []
+      - bearer: []
   /aliases/workflow-versions/{workflowVersionId}:
     post:
       tags:
@@ -115,7 +115,7 @@ paths:
           schema:
             $ref: "#/definitions/WorkflowVersion"
       security:
-      - BEARER: []
+      - bearer: []
   /api/ga4gh/v1/metadata:
     get:
       tags:
@@ -551,7 +551,7 @@ paths:
         200:
           description: "An array of Tools of the input organization."
       security:
-      - BEARER: []
+      - bearer: []
   /api/ga4gh/v2/extended/tools/{organization}:
     get:
       tags:
@@ -669,7 +669,7 @@ paths:
           schema:
             $ref: "#/definitions/Error"
       security:
-      - BEARER: []
+      - bearer: []
   /api/ga4gh/v2/metadata:
     get:
       tags:
@@ -1112,7 +1112,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/github:
     post:
       tags:
@@ -1136,7 +1136,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/github.com:
     get:
       tags:
@@ -1159,7 +1159,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/gitlab.com:
     get:
       tags:
@@ -1182,7 +1182,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/google:
     post:
       tags:
@@ -1205,7 +1205,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/orcid.org:
     post:
       tags:
@@ -1227,7 +1227,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/quay.io:
     get:
       tags:
@@ -1250,7 +1250,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/zenodo.org:
     get:
       tags:
@@ -1273,7 +1273,7 @@ paths:
           schema:
             $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /auth/tokens/{tokenId}:
     get:
       tags:
@@ -1300,7 +1300,7 @@ paths:
         404:
           description: "Token not found"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "tokens"
@@ -1320,7 +1320,7 @@ paths:
         400:
           description: "Invalid token value"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/dockerRegistryList:
     get:
       tags:
@@ -1379,7 +1379,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/hostedEntry/{entryId}:
     delete:
       tags:
@@ -1407,7 +1407,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
     patch:
       tags:
       - "hosted"
@@ -1438,7 +1438,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/namespace/{namespace}/published:
     get:
       tags:
@@ -1487,7 +1487,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/path/tool/{repository}/published:
     get:
       tags:
@@ -1538,7 +1538,7 @@ paths:
               $ref: "#/definitions/Tag"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
   /containers/path/{repository}:
     get:
       tags:
@@ -1562,7 +1562,7 @@ paths:
             items:
               $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/path/{repository}/published:
     get:
       tags:
@@ -1685,7 +1685,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/schema/{containerId}/published:
     get:
       tags:
@@ -1733,7 +1733,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}:
     get:
       tags:
@@ -1762,7 +1762,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "containers"
@@ -1792,7 +1792,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "containers"
@@ -1812,7 +1812,7 @@ paths:
         400:
           description: "Invalid "
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/descriptor/{relative-path}:
     get:
       tags:
@@ -1848,7 +1848,7 @@ paths:
           schema:
             $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/dockerfile:
     get:
       tags:
@@ -1876,7 +1876,7 @@ paths:
           schema:
             $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/labels:
     put:
       tags:
@@ -1912,7 +1912,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/primaryDescriptor:
     get:
       tags:
@@ -1944,7 +1944,7 @@ paths:
           schema:
             $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/publish:
     post:
       tags:
@@ -1973,7 +1973,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/refresh:
     get:
       tags:
@@ -1996,7 +1996,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/requestDOI/{tagId}:
     post:
       tags:
@@ -2027,7 +2027,7 @@ paths:
             items:
               $ref: "#/definitions/Tag"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/secondaryDescriptors:
     get:
       tags:
@@ -2061,7 +2061,7 @@ paths:
             items:
               $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/star:
     put:
       tags:
@@ -2088,7 +2088,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/starredUsers:
     get:
       tags:
@@ -2144,7 +2144,7 @@ paths:
             items:
               $ref: "#/definitions/Tag"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "containertags"
@@ -2176,7 +2176,7 @@ paths:
             items:
               $ref: "#/definitions/Tag"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/tags/{tagId}:
     delete:
       tags:
@@ -2203,7 +2203,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/testParameterFiles:
     get:
       tags:
@@ -2242,7 +2242,7 @@ paths:
             items:
               $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "containers"
@@ -2294,7 +2294,7 @@ paths:
               $ref: "#/definitions/SourceFile"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "containers"
@@ -2339,7 +2339,7 @@ paths:
               $ref: "#/definitions/SourceFile"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/updateTagPaths:
     put:
       tags:
@@ -2369,7 +2369,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{containerId}/users:
     get:
       tags:
@@ -2394,7 +2394,7 @@ paths:
             items:
               $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{toolId}/defaultVersion:
     put:
       tags:
@@ -2423,7 +2423,7 @@ paths:
           schema:
             $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /containers/{toolId}/zip/{tagId}:
     get:
       tags:
@@ -2450,7 +2450,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /curation/notifications:
     get:
       tags:
@@ -2491,7 +2491,7 @@ paths:
           schema:
             $ref: "#/definitions/Notification"
       security:
-      - BEARER: []
+      - bearer: []
   /curation/notifications/{id}:
     get:
       tags:
@@ -2541,7 +2541,7 @@ paths:
           schema:
             $ref: "#/definitions/Notification"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "curation"
@@ -2561,7 +2561,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /entries/{id}/aliases:
     post:
       tags:
@@ -2590,7 +2590,7 @@ paths:
           schema:
             $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /entries/{id}/collections:
     get:
       tags:
@@ -2636,7 +2636,7 @@ paths:
           schema:
             $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /events:
     get:
       tags:
@@ -2677,7 +2677,7 @@ paths:
             items:
               $ref: "#/definitions/Event"
       security:
-      - BEARER: []
+      - bearer: []
   /lambdaEvents/{organization}:
     get:
       tags:
@@ -2932,7 +2932,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/all:
     get:
       tags:
@@ -2961,7 +2961,7 @@ paths:
             items:
               $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/collections/{alias}/aliases:
     get:
       tags:
@@ -3010,7 +3010,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/name/{name}:
     get:
       tags:
@@ -3033,7 +3033,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{alias}/aliases:
     get:
       tags:
@@ -3077,7 +3077,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "organizations"
@@ -3106,7 +3106,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/aliases:
     post:
       tags:
@@ -3135,7 +3135,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/approve:
     post:
       tags:
@@ -3158,7 +3158,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/collections:
     get:
       tags:
@@ -3189,7 +3189,7 @@ paths:
             items:
               $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
     post:
       tags:
       - "organizations"
@@ -3217,7 +3217,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/collections/{collectionId}:
     get:
       tags:
@@ -3247,7 +3247,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "organizations"
@@ -3282,7 +3282,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/collections/{collectionId}/description:
     get:
       tags:
@@ -3313,7 +3313,7 @@ paths:
           schema:
             type: "string"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "organizations"
@@ -3347,7 +3347,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/collections/{collectionId}/entry:
     post:
       tags:
@@ -3382,7 +3382,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "organizations"
@@ -3416,7 +3416,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/description:
     get:
       tags:
@@ -3440,7 +3440,7 @@ paths:
           schema:
             type: "string"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "organizations"
@@ -3468,7 +3468,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/events:
     get:
       tags:
@@ -3512,7 +3512,7 @@ paths:
             items:
               $ref: "#/definitions/Event"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/invitation:
     post:
       tags:
@@ -3538,7 +3538,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/members:
     get:
       tags:
@@ -3565,7 +3565,7 @@ paths:
               $ref: "#/definitions/OrganizationUser"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/reject:
     post:
       tags:
@@ -3588,7 +3588,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/request:
     post:
       tags:
@@ -3611,7 +3611,7 @@ paths:
           schema:
             $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/star:
     put:
       tags:
@@ -3638,7 +3638,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/starredUsers:
     get:
       tags:
@@ -3698,7 +3698,7 @@ paths:
           schema:
             $ref: "#/definitions/OrganizationUser"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "organizations"
@@ -3741,7 +3741,7 @@ paths:
           schema:
             $ref: "#/definitions/OrganizationUser"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "organizations"
@@ -3767,7 +3767,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationId}/users/{username}:
     put:
       tags:
@@ -3801,7 +3801,7 @@ paths:
           schema:
             $ref: "#/definitions/OrganizationUser"
       security:
-      - BEARER: []
+      - bearer: []
   /organizations/{organizationName}/collections/{collectionName}/name:
     get:
       tags:
@@ -3829,7 +3829,7 @@ paths:
           schema:
             $ref: "#/definitions/Collection"
       security:
-      - BEARER: []
+      - bearer: []
   /toolTester/logs:
     get:
       tags:
@@ -3916,7 +3916,7 @@ paths:
           schema:
             type: "boolean"
       security:
-      - BEARER: []
+      - bearer: []
   /users/github/events:
     get:
       tags:
@@ -3969,7 +3969,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /users/registries:
     get:
       tags:
@@ -4067,7 +4067,7 @@ paths:
             items:
               $ref: "#/definitions/Organization"
       security:
-      - BEARER: []
+      - bearer: []
   /users/starredTools:
     get:
       tags:
@@ -4086,7 +4086,7 @@ paths:
             items:
               $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /users/starredWorkflows:
     get:
       tags:
@@ -4105,7 +4105,7 @@ paths:
             items:
               $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /users/updateUserMetadata:
     get:
       tags:
@@ -4124,7 +4124,7 @@ paths:
             items:
               $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user:
     get:
       tags:
@@ -4141,7 +4141,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "users"
@@ -4157,7 +4157,7 @@ paths:
           schema:
             type: "boolean"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/changeUsername:
     post:
       tags:
@@ -4179,7 +4179,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/extended:
     get:
       tags:
@@ -4196,7 +4196,7 @@ paths:
           schema:
             $ref: "#/definitions/ExtendedUserData"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/memberships:
     get:
       tags:
@@ -4216,7 +4216,7 @@ paths:
               $ref: "#/definitions/OrganizationUser"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/updateUserMetadata:
     get:
       tags:
@@ -4241,7 +4241,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/{userId}:
     delete:
       tags:
@@ -4264,7 +4264,7 @@ paths:
           schema:
             type: "boolean"
       security:
-      - BEARER: []
+      - bearer: []
   /users/user/{userId}/limits:
     get:
       tags:
@@ -4287,7 +4287,7 @@ paths:
           schema:
             $ref: "#/definitions/Limits"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "users"
@@ -4315,7 +4315,7 @@ paths:
           schema:
             $ref: "#/definitions/Limits"
       security:
-      - BEARER: []
+      - bearer: []
   /users/username/{username}:
     get:
       tags:
@@ -4337,7 +4337,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /users/users/entries:
     get:
       tags:
@@ -4412,7 +4412,7 @@ paths:
           schema:
             $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/containers:
     get:
       tags:
@@ -4437,7 +4437,7 @@ paths:
             items:
               $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/containers/published:
     get:
       tags:
@@ -4462,7 +4462,7 @@ paths:
             items:
               $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/containers/{organization}/refresh:
     get:
       tags:
@@ -4497,7 +4497,7 @@ paths:
             items:
               $ref: "#/definitions/DockstoreTool"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/services:
     get:
       tags:
@@ -4522,7 +4522,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/tokens:
     get:
       tags:
@@ -4547,7 +4547,7 @@ paths:
             items:
               $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/tokens/dockstore:
     get:
       tags:
@@ -4572,7 +4572,7 @@ paths:
             items:
               $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/tokens/github.com:
     get:
       tags:
@@ -4597,7 +4597,7 @@ paths:
             items:
               $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/tokens/gitlab.com:
     get:
       tags:
@@ -4622,7 +4622,7 @@ paths:
             items:
               $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/tokens/quay.io:
     get:
       tags:
@@ -4647,7 +4647,7 @@ paths:
             items:
               $ref: "#/definitions/Token"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/workflows:
     get:
       tags:
@@ -4672,7 +4672,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
     patch:
       tags:
       - "users"
@@ -4704,7 +4704,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /users/{userId}/workflows/published:
     get:
       tags:
@@ -4729,7 +4729,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/github:
     delete:
       tags:
@@ -4761,7 +4761,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/github/install:
     post:
       tags:
@@ -4794,7 +4794,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/github/release:
     post:
       tags:
@@ -4832,7 +4832,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/hostedEntry:
     post:
       tags:
@@ -4874,7 +4874,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/hostedEntry/{entryId}:
     post:
       tags:
@@ -4903,7 +4903,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
       deprecated: true
     delete:
       tags:
@@ -4931,7 +4931,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
     patch:
       tags:
       - "hosted"
@@ -4962,7 +4962,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/manualRegister:
     post:
       tags:
@@ -5009,7 +5009,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/organization/{organization}/published:
     get:
       tags:
@@ -5053,7 +5053,7 @@ paths:
           schema:
             $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/path/entry/{repository}/published:
     get:
       tags:
@@ -5106,7 +5106,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/path/workflow/{repository}/actions:
     get:
       tags:
@@ -5141,7 +5141,7 @@ paths:
               - "DELETE"
               - "SHARE"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/path/workflow/{repository}/permissions:
     get:
       tags:
@@ -5171,7 +5171,7 @@ paths:
             items:
               $ref: "#/definitions/Permission"
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "workflows"
@@ -5214,7 +5214,7 @@ paths:
             items:
               $ref: "#/definitions/Permission"
       security:
-      - BEARER: []
+      - bearer: []
     patch:
       tags:
       - "workflows"
@@ -5250,7 +5250,7 @@ paths:
             items:
               $ref: "#/definitions/Permission"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/path/workflow/{repository}/published:
     get:
       tags:
@@ -5305,7 +5305,7 @@ paths:
             items:
               $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/published:
     get:
       tags:
@@ -5471,7 +5471,7 @@ paths:
             items:
               $ref: "#/definitions/SharedWorkflows"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{alias}/aliases:
     get:
       tags:
@@ -5494,7 +5494,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{entryId}/registerCheckerWorkflow/{descriptorType}:
     post:
       tags:
@@ -5537,7 +5537,7 @@ paths:
           schema:
             $ref: "#/definitions/Entry"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}:
     get:
       tags:
@@ -5566,7 +5566,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "workflows"
@@ -5595,7 +5595,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/dag/{workflowVersionId}:
     get:
       tags:
@@ -5625,7 +5625,7 @@ paths:
           schema:
             type: "string"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/defaultVersion:
     put:
       tags:
@@ -5654,7 +5654,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/descriptor/{relative-path}:
     get:
       tags:
@@ -5690,7 +5690,7 @@ paths:
           schema:
             $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/labels:
     put:
       tags:
@@ -5726,7 +5726,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/primaryDescriptor:
     get:
       tags:
@@ -5758,7 +5758,7 @@ paths:
           schema:
             $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/publish:
     post:
       tags:
@@ -5787,7 +5787,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/refresh:
     get:
       tags:
@@ -5810,7 +5810,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/refresh/{version}:
     get:
       tags:
@@ -5838,7 +5838,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/requestDOI/{workflowVersionId}:
     put:
       tags:
@@ -5876,7 +5876,7 @@ paths:
             items:
               $ref: "#/definitions/WorkflowVersion"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/resetVersionPaths:
     put:
       tags:
@@ -5906,7 +5906,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/restub:
     get:
       tags:
@@ -5929,7 +5929,7 @@ paths:
           schema:
             $ref: "#/definitions/Workflow"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/secondaryDescriptors:
     get:
       tags:
@@ -5963,7 +5963,7 @@ paths:
             items:
               $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/star:
     put:
       tags:
@@ -5990,7 +5990,7 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/starredUsers:
     get:
       tags:
@@ -6043,7 +6043,7 @@ paths:
             items:
               $ref: "#/definitions/SourceFile"
       security:
-      - BEARER: []
+      - bearer: []
     put:
       tags:
       - "workflows"
@@ -6087,7 +6087,7 @@ paths:
               $ref: "#/definitions/SourceFile"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
     delete:
       tags:
       - "workflows"
@@ -6124,7 +6124,7 @@ paths:
               $ref: "#/definitions/SourceFile"
             uniqueItems: true
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/tools/{workflowVersionId}:
     get:
       tags:
@@ -6154,7 +6154,7 @@ paths:
           schema:
             type: "string"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/users:
     get:
       tags:
@@ -6179,7 +6179,7 @@ paths:
             items:
               $ref: "#/definitions/User"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/workflowVersions:
     put:
       tags:
@@ -6212,7 +6212,7 @@ paths:
             items:
               $ref: "#/definitions/WorkflowVersion"
       security:
-      - BEARER: []
+      - bearer: []
   /workflows/{workflowId}/zip/{workflowVersionId}:
     get:
       tags:
@@ -6239,9 +6239,9 @@ paths:
         default:
           description: "successful operation"
       security:
-      - BEARER: []
+      - bearer: []
 securityDefinitions:
-  BEARER:
+  bearer:
     type: "apiKey"
     name: "Authorization"
     in: "header"

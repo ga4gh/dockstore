@@ -22,7 +22,7 @@ import java.util.List;
  * @since 22/09/17
  */
 public final class Constants {
-    public static final String JWT_SECURITY_DEFINITION_NAME = "BEARER";
+    public static final String JWT_SECURITY_DEFINITION_NAME = "bearer";
     public static final int LAMBDA_FAILURE = 418; // Tell lambda to not try again
     public static final String OPTIONAL_AUTH_MESSAGE = "Does not require authentication for published workflows,"
             + " authentication can be provided for restricted workflows";
