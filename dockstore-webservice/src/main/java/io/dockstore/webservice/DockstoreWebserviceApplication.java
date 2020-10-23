@@ -64,6 +64,7 @@ import io.dockstore.webservice.core.Workflow;
 import io.dockstore.webservice.core.WorkflowVersion;
 import io.dockstore.webservice.doi.DOIGeneratorFactory;
 import io.dockstore.webservice.helpers.CacheConfigManager;
+import io.dockstore.webservice.helpers.GoogleAnalyticsHelper;
 import io.dockstore.webservice.helpers.GoogleHelper;
 import io.dockstore.webservice.helpers.MetadataResourceHelper;
 import io.dockstore.webservice.helpers.ObsoleteUrlFactory;
@@ -366,6 +367,9 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         DOIGeneratorFactory.setConfig(configuration);
 
         GoogleHelper.setConfig(configuration);
+
+        GoogleAnalyticsHelper.setConfig(configuration);
+        GoogleAnalyticsHelper.initAnalyticsReporting();
 
         ToolsApi toolsApi = new ToolsApi(null);
         environment.jersey().register(toolsApi);

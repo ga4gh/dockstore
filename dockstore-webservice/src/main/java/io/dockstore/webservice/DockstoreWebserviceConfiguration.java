@@ -144,6 +144,10 @@ public class DockstoreWebserviceConfiguration extends Configuration {
 
     private String dashboard = "dashboard.dockstore.org";
 
+    private String googleAnalyticsViewId = null;
+
+    private String googleServiceAccountSecretFile = null;
+
     @Valid
     @NotNull
     private UIConfig uiConfig;
@@ -512,6 +516,24 @@ public class DockstoreWebserviceConfiguration extends Configuration {
 
     public void setDashboard(String dashboard) {
         this.dashboard = dashboard;
+    }
+
+    @JsonProperty("googleAnalyticsViewId")
+    public String getGoogleAnalyticsViewId() {
+        return googleAnalyticsViewId;
+    }
+
+    public void setGoogleAnalyticsViewId(String googleAnalyticsViewId) {
+        this.googleAnalyticsViewId = googleAnalyticsViewId;
+    }
+
+    @JsonProperty("googleServiceAccountSecretFile")
+    public String getGoogleServiceAccountSecretFile() {
+        return googleServiceAccountSecretFile;
+    }
+
+    public void setGoogleServiceAccountSecretFile(String googleServiceAccountSecretFile) {
+        this.googleServiceAccountSecretFile = googleServiceAccountSecretFile;
     }
 
     @JsonProperty
