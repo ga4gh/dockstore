@@ -5,21 +5,6 @@ executors:
       - image: cimg/openjdk:11.0.8
         environment:
           PGHOST: 127.0.0.1
-      - image: circleci/postgres:11.8
-        command: postgres -c max_connections=200
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          PG_HOST: localhost
-          POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_PASSWORD: postgres
-      - image: docker.elastic.co/elasticsearch/elasticsearch:7.10.0
-        environment:
-          - xpack.security.enabled: false
-          - transport.host: localhost
-          - network.host: 127.0.0.1
-          - http.port: 9200
-          - discovery.type: single-node
     resource_class: medium+
 
 common_filters: &common_filters
@@ -29,45 +14,13 @@ common_filters: &common_filters
     branches:
       ignore:
         - gh-pages
-
-    
 workflows:
   version: 2
   everything:
     jobs:
-      - build:
-          <<: *common_filters
-      - unit_test:
-          <<: *common_filters
-          requires:
-            - build
-      - workflow-integration-tests:
-          <<: *common_filters
-          requires:
-            - build
-      - tool-integration-tests:
-          <<: *common_filters
-          requires:
-            - build
       - integration-tests:
           <<: *common_filters
-          requires:
-            - build
-      - regression-integration-tests:
-          filters:
-            branches:
-              only:
-                - master
-                - /^release.*$/
 jobs:
-  regression-integration-tests:
-    executor: integration_test_exec
-    environment:
-      TESTING_PROFILE: regression-integration-tests
-    steps:
-      - setup_test
-      - setup_integration_test
-      - save_test_results
   integration-tests:
     executor: integration_test_exec
     environment:
@@ -75,205 +28,6 @@ jobs:
     steps:
       - setup_remote_docker:
           version: 19.03.13
-      - setup_test
-      - setup_integration_test
-      - save_test_results
-  tool-integration-tests:
-    executor: integration_test_exec
-    environment:
-      TESTING_PROFILE: tool-integration-tests
-    steps:
-      - setup_test
-      - setup_integration_test
-      - save_test_results
-  workflow-integration-tests:
-    executor: integration_test_exec
-    environment:
-      TESTING_PROFILE: workflow-integration-tests
-    steps:
-      - setup_test
-      - setup_integration_test
-      - save_test_results
-  build:
-    docker: # run the steps with Docker
-      - image: cimg/openjdk:11.0.8
-        environment:
-          JAVA_TOOL_OPTIONS: -Xmx512m # Java can read cgroup. Sadly the cgroup in CircleCI is wrong. Have to manually set. Nothing to do with surefire plugin, it has its own JVM. The two of these must add up to a bit less than 4GB.
-    steps: # a collection of executable commands
-      - checkout # check out source code to working directory
-      - restore_cache: # restore the saved cache after the first run or if `pom.xml` has changed
-          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
-          key: dockstore-java-{{ checksum "pom.xml" }}
-      - run:
-          name: Install yq
-          command: |
-            wget https://github.com/mikefarah/yq/releases/download/3.3.2/yq_linux_amd64
-            chmod a+x yq_linux_amd64
-            sudo mv yq_linux_amd64 /usr/bin/yq
-      - install-git-secrets
-      - run:
-          name: decrypt and expand confidential test data
-          command: |
-            sudo apt install openssl -y
-            bash scripts/decrypt.sh
-      - run:
-          name: build
-          command: mvn -B clean install -DskipTests
-      # - run:
-      #     name: validate openapi
-      #     command: |
-      #       wget --no-verbose https://repo.maven.apache.org/maven2/org/openapitools/openapi-generator-cli/4.3.0/openapi-generator-cli-4.3.0.jar -O openapi-generator-cli.jar
-      #       java -jar openapi-generator-cli.jar validate -i dockstore-webservice/src/main/resources/swagger.yaml
-      #       java -jar openapi-generator-cli.jar validate -i dockstore-webservice/src/main/resources/openapi3/openapi.yaml
-      - run:
-          name: copy m2 manually
-          command: cp -r ~/.m2 .
-      - persist_to_workspace:
-          root: .
-          paths:
-            - .
-  unit_test: # runs not using Workflows must have a `build` job as entry point
-    docker: # run the steps with Docker
-      - image: cimg/openjdk:11.0.8
-        environment:
-          JAVA_TOOL_OPTIONS: -Xmx512m # Java can read cgroup. Sadly the cgroup in CircleCI is wrong. Have to manually set. Nothing to do with surefire plugin, it has its own JVM. The two of these must add up to a bit less than 4GB.
-          PGHOST: 127.0.0.1
-      - image: circleci/postgres:9.6.19
-        environment:
-          POSTGRES_USER: postgres
-          POSTGRES_DB: postgres
-          POSTGRES_HOST_AUTH_METHOD: trust
-          POSTGRES_PASSWORD: postgres
-    steps: # a collection of executable commands
-      - checkout
-      - run:
-          name: Install yq
-          command: |
-            wget https://github.com/mikefarah/yq/releases/download/3.3.2/yq_linux_amd64
-            chmod a+x yq_linux_amd64
-            sudo mv yq_linux_amd64 /usr/bin/yq
-      - run:
-          name: Install postgresql client
-          command: |
-            sudo rm -rf /var/lib/apt/lists/*
-            sudo apt update
-            sudo apt install -y postgresql-client
-      - install-git-secrets
-      - setup_postgres
-      - run:
-          name: run the actual tests
-          command: mvn -B org.jacoco:jacoco-maven-plugin:report org.jacoco:jacoco-maven-plugin:report-aggregate clean install -Punit-tests,coverage -ntp
-      - run:
-          name: run the non-confidential integration tests
-          command: |
-            # Adding all "normal" certs into this local one that has the Hoverfly cert (instead of adding Hoverfly cert to the global one so it doesn't potentially affect other tests) 
-            /usr/local/jdk-11.0.8/bin/keytool -importkeystore -srckeystore $JAVA_HOME/lib/security/cacerts -destkeystore LocalTrustStore -srcstorepass changeit -deststorepass changeit
-            # mvn -B org.jacoco:jacoco-maven-plugin:report org.jacoco:jacoco-maven-plugin:report-aggregate clean install -Pnon-confidential-tests,coverage -Djavax.net.ssl.trustStore=../LocalTrustStore -Djavax.net.ssl.trustStorePassword=changeit  -DskipSignatureCheck=false -ntp
-            mvn -B org.jacoco:jacoco-maven-plugin:report org.jacoco:jacoco-maven-plugin:report-aggregate clean install -Pnon-confidential-tests,coverage -Djavax.net.ssl.trustStore=../LocalTrustStore -Djavax.net.ssl.trustStorePassword=changeit -ntp
-      - run:
-          name: send coverage
-          command: bash <(curl -s https://codecov.io/bash) -F ${TESTING_PROFILE//-} || echo "Codecov did not collect coverage reports"
-      - run:
-          name: check that JPA classes are consistent with migrations
-          command: |
-            scripts/check_migrations.sh
-          environment:
-            TESTING_PROFILE: automated-review
-      - run:
-          name: check generated THIRD-PARTY-LICENCES.txt matches checked-in file
-          command: |
-            scripts/check-licenses.sh
-          environment:
-            TESTING_PROFILE: automated-review
-      - run:
-          name: Run git-secrets scan on dockstore repository
-          # Needs to be after a build so that the correct configuration is set
-          # by the exec-maven plugin
-          command: |
-            git secrets --scan
-      - run:
-          name: clean the cache
-          command: |
-            rm -rf ~/.m2/repository/io/dockstore
-            rm -rf ~/.m2/repository/.cache/download-maven-plugin directory
-      - save_cache: # saves the project dependencies
-          paths:
-            - ~/.m2
-          key: dockstore-java-{{ checksum "pom.xml" }}
-      - run:
-          name: Save test results
-          command: |
-            mkdir -p ~/junit/
-            find . -type f -regex ".*/target/.*-reports/.*xml" -exec cp {} ~/junit/ \;
-          when: always
-      - store_test_results:
-          path: ~/junit
-      - store_artifacts:
-          path: ~/junit
-      - run:
-          name: Make jar directory
-          command: mkdir /tmp/artifacts
-      - run:
-          name: Move jars
-          command: cp dockstore-webservice/target/dockstore*[^s].jar /tmp/artifacts
-      - run:
-          name: Move swagger.yaml
-          command: |
-            cp dockstore-webservice/src/main/resources/swagger.yaml /tmp/artifacts
-            cp dockstore-webservice/src/main/resources/openapi3/openapi.yaml /tmp/artifacts
-      - store_artifacts:
-          path: /tmp/artifacts
-      - setup_remote_docker
-      - run:
-          name: Build and publish Docker
-          command: |
-            export tagOrBranch=${CIRCLE_TAG-$CIRCLE_BRANCH}
-            # Convert slashes to underscores, e.g., feature/seab-1675/pushtoquay to feature_seab-1675_pushtoquay
-            export dockerVersion=${tagOrBranch//\//_}
-            docker build -t quay.io/dockstore/dockstore-webservice:$dockerVersion .
-            echo "$QUAY_PASSWORD" | docker login -u=$QUAY_USERNAME --password-stdin quay.io
-            docker push quay.io/dockstore/dockstore-webservice:$dockerVersion
-commands:
-  install-git-secrets:
-    steps:
-      - run:
-          name: Install git-secrets
-          command: |
-            wget --no-verbose -O git-secrets-1.3.0.tar.gz https://github.com/awslabs/git-secrets/archive/1.3.0.tar.gz
-            tar -zxf git-secrets-1.3.0.tar.gz
-            cd git-secrets-1.3.0
-            sudo make install
-  setup_postgres:
-    steps:
-      - run:
-          name: setup postgres
-          command: |
-            psql -c "create user dockstore with password 'dockstore' createdb;" -U postgres
-            psql -c 'create database webservice_test with owner = dockstore;' -U postgres
-  setup_test:
-    steps:
-      - attach_workspace:
-          at: .
-      - restore_cache: # restore the saved cache after the first run or if `pom.xml` has changed
-          # Read about caching dependencies: https://circleci.com/docs/2.0/caching/
-          key: dockstore-java-{{ checksum "pom.xml" }}
-      - run:
-          name: manually copy back .m2
-          command: cp -r .m2 ~/.m2
-      - run:
-          name: Install yq
-          command: |
-            wget https://github.com/mikefarah/yq/releases/download/3.3.2/yq_linux_amd64
-            chmod a+x yq_linux_amd64
-            sudo mv yq_linux_amd64 /usr/bin/yq
-      - run:
-          name: Install postgresql client
-          command: |
-            sudo rm -rf /var/lib/apt/lists/*
-            sudo apt update
-            sudo apt install -y postgresql-client
-  setup_integration_test:
-    steps:
       - run:
           name: install pip
           command: |
@@ -288,37 +42,12 @@ commands:
           name: install pip dependencies
           command: scripts/install-tests.sh
       - run:
-          name: decrypt and expand confidential test data
+          name: get hello world files
           command: |
-            sudo apt install openssl -y
-            bash scripts/decrypt.sh
-      - install-git-secrets
+            wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/Dockstore.cwl
+            wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/test.json
+            wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/template.txt
+            wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/input.txt
       - run:
-          name: install dockerize
-          command: wget https://github.com/jwilder/dockerize/releases/download/$DOCKERIZE_VERSION/dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && sudo tar -C /usr/local/bin -xzvf dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz && rm dockerize-linux-amd64-$DOCKERIZE_VERSION.tar.gz
-          environment:
-            DOCKERIZE_VERSION: v0.6.1
-      - run:
-          name: Wait for db
-          command: dockerize -wait tcp://localhost:5432 -timeout 1m
-      - setup_postgres
-      - run:
-          name: Wait for ES
-          command: |
-            wget --output-document /dev/null --waitretry=5 --tries=10 --retry-connrefused localhost:9200 || true
-      - run:
-          name: run integration test
-          command: mvn -B org.jacoco:jacoco-maven-plugin:report org.jacoco:jacoco-maven-plugin:report-aggregate clean install -P$TESTING_PROFILE,coverage -ntp
-      - run:
-          name: send coverage
-          command: bash <(curl -s https://codecov.io/bash) -F ${TESTING_PROFILE//-} || echo "Codecov did not collect coverage reports"
-  save_test_results:
-    steps:
-      - run:
-          name: Save test results
-          command: |
-            mkdir -p ~/test-results/junit/
-            find . -type f -regex ".*/target/.*-reports/.*xml" -exec cp {} ~/test-results/junit/ \;
-          when: always
-      - store_test_results:
-          path: ~/test-results
+          nam: run cwltool
+          command: cwltool Dockstore.cwl test.json
