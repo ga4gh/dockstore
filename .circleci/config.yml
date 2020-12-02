@@ -43,6 +43,9 @@ jobs:
           name: install pip dependencies
           command: scripts/install-tests.sh
       - run:
+          name: show that docker works
+          command: docker info
+      - run:
           name: get hello world files
           command: |
             wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/Dockstore.cwl
