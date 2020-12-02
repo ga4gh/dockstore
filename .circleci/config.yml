@@ -51,4 +51,4 @@ jobs:
             wget https://raw.githubusercontent.com/GA4GH-DREAM/dockstore-tool-helloworld/1.0.2/input.txt
       - run:
           nam: run cwltool
-          command: cwltool Dockstore.cwl test.json
+          command: cwltool Dockstore.cwl.1 test.json
