@@ -49,6 +49,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -496,12 +497,8 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
 
         // Validate email and link
-        if (organization.getEmail() != null) {
-            validateEmail(organization.getEmail());
-        }
-        if (organization.getLink() != null) {
-            validateLink(organization.getLink());
-        }
+        validateEmail(organization.getEmail());
+        validateLink(organization.getLink());
 
         // Save organization
         organization.setStatus(Organization.ApplicationState.PENDING); // should not be approved by default
@@ -568,12 +565,8 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
 
         // Validate email and link
-        if (organization.getEmail() != null) {
-            validateEmail(organization.getEmail());
-        }
-        if (organization.getLink() != null) {
-            validateLink(organization.getLink());
-        }
+        validateEmail(organization.getEmail());
+        validateLink(organization.getLink());
 
         if (!oldOrganization.getName().equals(organization.getName()) || !oldOrganization.getDisplayName().equals(organization.getDisplayName())) {
             if (user.getIsAdmin() || user.isCurator() || oldOrganization.getStatus() != Organization.ApplicationState.APPROVED) {
@@ -601,7 +594,14 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         return organizationDAO.findById(id);
     }
 
+    /**
+     * Validate email string. null/empty is valid since it's optional.
+     * @param email The email to validate
+     */
     private void validateEmail(String email) {
+        if (StringUtils.isEmpty(email)) {
+            return;
+        }
         EmailValidator emailValidator = EmailValidator.getInstance();
         if (!emailValidator.isValid(email)) {
             String msg = "Email is invalid: " + email;
@@ -610,7 +610,14 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
     }
 
+    /**
+     * Validate url string. null/empty is valid since it's optional.
+     * @param url The link to validate
+     */
     private void validateLink(String url) {
+        if (StringUtils.isEmpty(url)) {
+            return;
+        }
         String[] schemes = { "http", "https" };
         UrlValidator urlValidator = new UrlValidator(schemes);
         if (!urlValidator.isValid(url)) {

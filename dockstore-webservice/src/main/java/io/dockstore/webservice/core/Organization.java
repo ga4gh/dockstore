@@ -37,6 +37,7 @@ import io.dockstore.webservice.helpers.EntryStarredSerializer;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -180,6 +181,10 @@ public class Organization implements Serializable, Aliasable {
     }
 
     public void setLink(String link) {
+        // // Avoid setting link as empty in order to reduce complications in DB
+        if (StringUtils.isEmpty(link)) {
+            link = null;
+        }
         this.link = link;
     }
 
@@ -196,6 +201,10 @@ public class Organization implements Serializable, Aliasable {
     }
 
     public void setEmail(String email) {
+        // // Avoid setting email as empty in order to reduce complications in DB
+        if (StringUtils.isEmpty(email)) {
+            email = null;
+        }
         this.email = email;
     }
 
