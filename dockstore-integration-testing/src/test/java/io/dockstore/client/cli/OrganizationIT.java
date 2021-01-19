@@ -377,6 +377,16 @@ public class OrganizationIT extends BaseIT {
         Organization curatorUpdatedOrganization = organizationsApiCurator.updateOrganization(organization, organization.getId());
         assertEquals("A curator can still update an approved organization name", "NameSquatting", curatorUpdatedOrganization.getName());
         assertEquals("A curator can still update an approved organization display name", "DisplayNameSquatting", curatorUpdatedOrganization.getDisplayName());
+
+        testEmptyEmailAndLink(organizationsApiCurator, organization);
+    }
+
+    private void testEmptyEmailAndLink(OrganizationsApi organizationsApi, Organization organization) {
+        organization.setEmail("");
+        organization.setLink("");
+        Organization updatedOrganization = organizationsApi.updateOrganization(organization, organization.getId());
+        assertEquals(null, updatedOrganization.getEmail());
+        assertEquals(null, updatedOrganization.getEmail());
     }
 
     /**
