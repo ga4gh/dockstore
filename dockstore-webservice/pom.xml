@@ -488,29 +488,29 @@
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-            liquibase https://liquibase.jira.com/browse/CORE-3262
-            -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
+<!--            &lt;!&ndash; note: this brings in a version of jaxb-api that breaks-->
+<!--            liquibase https://liquibase.jira.com/browse/CORE-3262-->
+<!--            &ndash;&gt;-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>javax.xml.bind</groupId>-->
+<!--                    <artifactId>jaxb-api</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-jaxrs2 -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-            liquibase https://liquibase.jira.com/browse/CORE-3262
-            -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
+<!--            &lt;!&ndash; note: this brings in a version of jaxb-api that breaks-->
+<!--            liquibase https://liquibase.jira.com/browse/CORE-3262-->
+<!--            &ndash;&gt;-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>javax.xml.bind</groupId>-->
+<!--                    <artifactId>jaxb-api</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-jaxrs2-servlet-initializer -->
         <dependency>
@@ -950,15 +950,15 @@
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-integration</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-           liquibase https://liquibase.jira.com/browse/CORE-3262
-           -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
+<!--            &lt;!&ndash; note: this brings in a version of jaxb-api that breaks-->
+<!--           liquibase https://liquibase.jira.com/browse/CORE-3262-->
+<!--           &ndash;&gt;-->
+<!--            <exclusions>-->
+<!--                <exclusion>-->
+<!--                    <groupId>javax.xml.bind</groupId>-->
+<!--                    <artifactId>jaxb-api</artifactId>-->
+<!--                </exclusion>-->
+<!--            </exclusions>-->
         </dependency>
         <dependency>
             <groupId>org.pf4j</groupId>
@@ -1249,7 +1249,7 @@
             <plugin>
                 <groupId>io.swagger.core.v3</groupId>
                 <artifactId>swagger-maven-plugin</artifactId>
-                <version>${openapi-annotations-version}</version>
+<!--                <version>${openapi-annotations-version}</version>-->
                 <configuration>
                     <outputFileName>unsortedopenapi</outputFileName>
                     <outputPath>${pom.basedir}/src/main/resources/openapi3</outputPath>
