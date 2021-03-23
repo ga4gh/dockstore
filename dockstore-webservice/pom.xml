@@ -488,29 +488,11 @@
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-annotations</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-            liquibase https://liquibase.jira.com/browse/CORE-3262
-            -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-jaxrs2 -->
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-jaxrs2</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-            liquibase https://liquibase.jira.com/browse/CORE-3262
-            -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <!-- https://mvnrepository.com/artifact/io.swagger.core.v3/swagger-jaxrs2-servlet-initializer -->
         <dependency>
@@ -930,7 +912,6 @@
         <dependency>
             <groupId>org.glassfish.jaxb</groupId>
             <artifactId>jaxb-runtime</artifactId>
-            <version>2.3.3</version>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -949,15 +930,6 @@
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
             <artifactId>swagger-integration</artifactId>
-            <!-- note: this brings in a version of jaxb-api that breaks
-           liquibase https://liquibase.jira.com/browse/CORE-3262
-           -->
-            <exclusions>
-                <exclusion>
-                    <groupId>javax.xml.bind</groupId>
-                    <artifactId>jaxb-api</artifactId>
-                </exclusion>
-            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.pf4j</groupId>
@@ -966,6 +938,10 @@
         <dependency>
             <groupId>com.fasterxml.jackson.datatype</groupId>
             <artifactId>jackson-datatype-jsr310</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>javax.xml.bind</groupId>
+            <artifactId>jaxb-api</artifactId>
         </dependency>
     </dependencies>
 
@@ -1124,6 +1100,7 @@
                                 <usedDependency>io.swagger.core.v3:swagger-jaxrs2-servlet-initializer</usedDependency>
                                 <usedDependency>jakarta.activation:jakarta.activation-api</usedDependency>
                                 <usedDependency>javax.persistence:javax.persistence-api</usedDependency>
+                                <usedDependency>javax.xml.bind:jaxb-api</usedDependency>
                             </usedDependencies>
                         </configuration>
                     </execution>
