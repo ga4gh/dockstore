@@ -20,7 +20,7 @@
     <parent>
         <groupId>io.dockstore</groupId>
         <artifactId>dockstore</artifactId>
-        <version>1.10.0-alpha.3-SNAPSHOT</version>
+        <version>1.11.0-alpha.2-SNAPSHOT</version>
         <relativePath>../pom.xml</relativePath>
     </parent>
     <artifactId>dockstore-common</artifactId>
@@ -234,19 +234,62 @@
                     <groupId>org.typelevel</groupId>
                     <artifactId>alleycats-core_2.12</artifactId>
                 </exclusion>
+                <!-- probably don't need GCP stuff -->
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-resourcemanager</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.google.cloud</groupId>
+                    <artifactId>google-cloud-monitoring</artifactId>
+                </exclusion>
             </exclusions>
         </dependency>
         <dependency>
             <groupId>org.broadinstitute</groupId>
             <artifactId>cromwell-wom_2.12</artifactId>
+            <exclusions>
+                <!-- Ignore the eu.timepit pulled in by this artifact which
+                 is not needed and requires the Scala 2.12 compiler and which
+                 causes a Scala compiler use warning because all the other
+                 Scala artifacts make use of the 2.13 compiler
+                 -->
+                <exclusion>
+                    <groupId>eu.timepit</groupId>
+                    <artifactId>refined_2.12</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.broadinstitute</groupId>
             <artifactId>cromwell-common_2.12</artifactId>
+            <exclusions>
+                <!-- Ignore the eu.timepit pulled in by this artifact which
+                 is not needed and requires the Scala 2.12 compiler and which
+                 causes a Scala compiler use warning because all the other
+                 Scala artifacts make use of the 2.13 compiler
+                 -->
+                <exclusion>
+                    <groupId>eu.timepit</groupId>
+                    <artifactId>refined_2.12</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+        <dependency>
+            <groupId>org.broadinstitute</groupId>
+            <artifactId>cromwell-wdl-transforms-new-base_2.12</artifactId>
         </dependency>
         <dependency>
             <groupId>org.broadinstitute</groupId>
             <artifactId>cromwell-wdl-transforms-draft3_2.12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.broadinstitute</groupId>
+            <artifactId>cromwell-wdl-model-draft3_2.12</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.broadinstitute</groupId>
+            <artifactId>cromwell-wdl-model-draft2_2.12</artifactId>
         </dependency>
         <dependency>
             <groupId>com.chuusai</groupId>
@@ -277,8 +320,8 @@
     <build>
         <plugins>
             <plugin>
-                <groupId>org.scala-tools</groupId>
-                <artifactId>maven-scala-plugin</artifactId>
+                <groupId>net.alchim31.maven</groupId>
+                <artifactId>scala-maven-plugin</artifactId>
                 <executions>
                     <execution>
                         <goals>
@@ -399,6 +442,10 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

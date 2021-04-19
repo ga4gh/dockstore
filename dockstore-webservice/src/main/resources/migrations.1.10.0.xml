@@ -107,4 +107,16 @@
             WHERE dagjson LIKE '%hub.docker.com/\_/images.sbgenomics.com%';
         </sql>
     </changeSet>
+    <changeSet author="nzhao (generated)" id="workflowForumUrl">
+        <addColumn tableName="service">
+            <column name="forumurl" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <addColumn tableName="workflow">
+            <column name="forumurl" type="varchar(255 BYTE)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="nzhao (generated)" id="changeForumUrlType">
+        <modifyDataType columnName="forumurl" newDataType="varchar(256)" tableName="service"/>
+        <modifyDataType columnName="forumurl" newDataType="varchar(256)" tableName="workflow"/>
+    </changeSet>
 </databaseChangeLog>

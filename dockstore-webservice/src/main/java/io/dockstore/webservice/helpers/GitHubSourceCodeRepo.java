@@ -17,6 +17,7 @@
 package io.dockstore.webservice.helpers;
 
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
@@ -43,12 +44,14 @@ import io.dockstore.common.yaml.DockstoreYaml12;
 import io.dockstore.common.yaml.DockstoreYamlHelper;
 import io.dockstore.common.yaml.Service12;
 import io.dockstore.common.yaml.YamlWorkflow;
+import io.dockstore.webservice.CacheHitListener;
 import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.DockstoreWebserviceApplication;
 import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.LicenseInformation;
 import io.dockstore.webservice.core.Service;
+import io.dockstore.webservice.core.SourceControlOrganization;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.TokenType;
 import io.dockstore.webservice.core.Tool;
@@ -60,6 +63,7 @@ import io.dockstore.webservice.core.WorkflowMode;
 import io.dockstore.webservice.core.WorkflowVersion;
 import okhttp3.OkHttpClient;
 import org.apache.commons.io.FilenameUtils;
+import org.apache.commons.lang3.ArrayUtils;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.lang3.tuple.Triple;
@@ -80,6 +84,7 @@ import org.kohsuke.github.GitHubBuilder;
 import org.kohsuke.github.HttpConnector;
 import org.kohsuke.github.RateLimitHandler;
 import org.kohsuke.github.extras.ImpatientHttpConnector;
+import org.kohsuke.github.extras.okhttp3.ObsoleteUrlFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -94,16 +99,34 @@ import static io.dockstore.webservice.Constants.SKIP_COMMIT_ID;
  */
 public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
 
+    public static final String OUT_OF_GIT_HUB_RATE_LIMIT = "Out of GitHub rate limit";
     private static final Logger LOG = LoggerFactory.getLogger(GitHubSourceCodeRepo.class);
     private final GitHub github;
+    private String githubTokenUsername;
 
-    GitHubSourceCodeRepo(String gitUsername, String githubTokenContent) {
-        this.gitUsername = gitUsername;
-        ObsoleteUrlFactory obsoleteUrlFactory = new ObsoleteUrlFactory(
-            new OkHttpClient.Builder().cache(DockstoreWebserviceApplication.getCache()).build());
-        HttpConnector okHttp3Connector =  new ImpatientHttpConnector(obsoleteUrlFactory::open);
+    /**
+     *  @param githubTokenUsername the username for githubTokenContent
+     * @param githubTokenContent authorization token
+     */
+    public GitHubSourceCodeRepo(String githubTokenUsername, String githubTokenContent) {
+        this.githubTokenUsername = githubTokenUsername;
+        // this code is duplicate from DockstoreWebserviceApplication, except this is a lot faster for unknown reasons ...
+        OkHttpClient.Builder builder = new OkHttpClient().newBuilder();
+        builder.eventListener(new CacheHitListener(GitHubSourceCodeRepo.class.getSimpleName(), githubTokenUsername));
+        if (System.getenv("CIRCLE_SHA1") != null) {
+            // namespace cache by user when testing
+            builder.cache(DockstoreWebserviceApplication.getCache(gitUsername));
+        } else {
+            // use general cache
+            builder.cache(DockstoreWebserviceApplication.getCache(null));
+        }
+        OkHttpClient build = builder.build();
+        ObsoleteUrlFactory obsoleteUrlFactory = new ObsoleteUrlFactory(build);
+
+        HttpConnector okHttp3Connector = new ImpatientHttpConnector(obsoleteUrlFactory::open);
         try {
-            this.github = new GitHubBuilder().withOAuthToken(githubTokenContent, gitUsername).withRateLimitHandler(RateLimitHandler.WAIT).withAbuseLimitHandler(AbuseLimitHandler.WAIT).withConnector(okHttp3Connector).build();
+            this.github = new GitHubBuilder().withOAuthToken(githubTokenContent, githubTokenUsername).withRateLimitHandler(new FailRateLimitHandler(githubTokenUsername))
+                    .withAbuseLimitHandler(AbuseLimitHandler.WAIT).withConnector(okHttp3Connector).build();
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
@@ -213,8 +236,10 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
         // retrieval of directory content is cached as opposed to retrieving individual files
         String fullPathNoEndSeparator = FilenameUtils.getFullPathNoEndSeparator(fileName);
         // but tags on quay.io that do not match github are costly, avoid by checking cached references
-        GHRef[] refs = repo.getRefs();
-        if (Lists.newArrayList(refs).stream().noneMatch(ref -> ref.getRef().contains(reference))) {
+
+        GHRef[] branchesAndTags = getBranchesAndTags(repo);
+
+        if (Lists.newArrayList(branchesAndTags).stream().noneMatch(ref -> ref.getRef().contains(reference))) {
             return null;
         }
         // only look at github if the reference exists
@@ -284,10 +309,10 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
     @Override
     public boolean checkSourceCodeValidity() {
         try {
-            GHRateLimit ghRateLimit = github.rateLimit();
-            if (ghRateLimit.remaining == 0) {
-                ZonedDateTime zonedDateTime = Instant.ofEpochSecond(ghRateLimit.reset.getTime()).atZone(ZoneId.systemDefault());
-                throw new CustomWebApplicationException("Out of rate limit, please wait till " + zonedDateTime, HttpStatus.SC_BAD_REQUEST);
+            GHRateLimit ghRateLimit = github.getRateLimit();
+            if (ghRateLimit.getRemaining() == 0) {
+                ZonedDateTime zonedDateTime = Instant.ofEpochSecond(ghRateLimit.getResetDate().getTime()).atZone(ZoneId.systemDefault());
+                throw new CustomWebApplicationException(OUT_OF_GIT_HUB_RATE_LIMIT + ", please wait til " + zonedDateTime, HttpStatus.SC_BAD_REQUEST);
             }
             github.getMyOrganizations();
         } catch (IOException e) {
@@ -394,8 +419,10 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
 
         // when getting a full workflow, look for versions and check each version for valid workflows
         List<Triple<String, Date, String>> references = new ArrayList<>();
+
+        GHRef[] refs = {};
         try {
-            GHRef[] refs = repository.getRefs();
+            refs = getBranchesAndTags(repository);
             for (GHRef ref : refs) {
                 Triple<String, Date, String> referenceTriple = getRef(ref, repository);
                 if (referenceTriple != null) {
@@ -736,20 +763,20 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
             if (testParameterPaths != null) {
                 List<String> missingParamFiles = new ArrayList<>();
                 for (String testParameterPath : testParameterPaths) {
-                    String testJsonContent = this.readFileFromRepo(testParameterPath, ref.getLeft(), repository);
-                    if (testJsonContent != null) {
-                        SourceFile testJson = new SourceFile();
-                        // find type from file type, then find matching test param type
-                        testJson.setType(workflow.getDescriptorType().getTestParamType());
-                        testJson.setPath(workflow.getDefaultTestParameterFilePath());
-                        testJson.setAbsolutePath(workflow.getDefaultTestParameterFilePath());
-                        testJson.setContent(testJsonContent);
-
-                        // Only add test parameter file if it hasn't already been added
-                        boolean hasDuplicate = version.getSourceFiles().stream().anyMatch((SourceFile sf) -> sf.getPath().equals(workflow.getDefaultTestParameterFilePath()) && sf.getType() == testJson.getType());
-                        if (!hasDuplicate) {
-                            version.getSourceFiles().add(testJson);
-                        }
+                    // Only add test parameter file if it hasn't already been added
+                    boolean hasDuplicate = version.getSourceFiles().stream().anyMatch((SourceFile sf) -> sf.getPath().equals(testParameterPath) && sf.getType() == workflow.getDescriptorType().getTestParamType());
+                    if (hasDuplicate) {
+                        continue;
+                    }
+                    String testFileContent = this.readFileFromRepo(testParameterPath, ref.getLeft(), repository);
+                    if (testFileContent != null) {
+                        SourceFile testFile = new SourceFile();
+                        // find type from file type
+                        testFile.setType(workflow.getDescriptorType().getTestParamType());
+                        testFile.setPath(testParameterPath);
+                        testFile.setAbsolutePath(testParameterPath);
+                        testFile.setContent(testFileContent);
+                        version.getSourceFiles().add(testFile);
                     } else {
                         missingParamFiles.add(testParameterPath);
                     }
@@ -806,7 +833,7 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
 
     private void reportOnRateLimit(String id, GHRateLimit startRateLimit, GHRateLimit endRateLimit) {
         if (startRateLimit != null && endRateLimit != null) {
-            int used = startRateLimit.remaining - endRateLimit.remaining;
+            int used = startRateLimit.getRemaining() - endRateLimit.getRemaining();
             if (used > 0) {
                 LOG.debug(id + ": used up " + used + " GitHub rate limited requests");
             } else {
@@ -815,14 +842,61 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
         }
     }
 
-    private GHRateLimit getGhRateLimitQuietly() {
+    public void reportOnGitHubRelease(GHRateLimit startRateLimit, GHRateLimit endRateLimit, String repository, String username, String gitReference, boolean isSuccessful) {
+        String gitHubRepoInfo = "Performing GitHub release for repository: " + repository + ", user: " + username + ", and git reference: " + gitReference;
+        String gitHubRateLimitInfo = " had a starting rate limit of " + startRateLimit.getRemaining() + " and ending rate limit of " + endRateLimit.getRemaining();
+        if (isSuccessful) {
+            LOG.info(gitHubRepoInfo + " succeeded and " + gitHubRateLimitInfo);
+        } else {
+            LOG.info(gitHubRepoInfo + " failed. Attempt " + gitHubRateLimitInfo);
+        }
+
+    }
+
+    public GHRateLimit getGhRateLimitQuietly() {
         GHRateLimit startRateLimit = null;
         try {
-            startRateLimit = github.rateLimit();
+            // github.rateLimit() was deprecated and returned a much lower limit, low balling our rate limit numbers
+            startRateLimit = github.getRateLimit();
         } catch (IOException e) {
             LOG.error("unable to retrieve rate limit, weird", e);
         }
         return startRateLimit;
+    }
+
+    /**
+     * This function replaces calling repo.getRefs(). Calling getRefs() will return all GHRefs, including old PRs. This change makes two calls
+     * instead to get only the branches and tags separately. Previously, an exception would get thrown if the repo had no GHRefs at all; now
+     * it will throw an exception only if the repo has neither tags nor branches, so that it is as similar as possible.
+     * @param repo Repository path (ex. dockstore/dockstore-ui2)
+     * @return GHRef[] Array of branches and tags
+     */
+    private GHRef[] getBranchesAndTags(GHRepository repo) throws IOException {
+        boolean getBranchesSucceeded = false;
+        GHRef[] branches = {};
+        GHRef[] tags = {};
+
+        // getRefs() fails with a GHFileNotFoundException if there are no matching results instead of returning an empty array/null.
+        try {
+            branches = repo.getRefs("refs/heads/");
+            getBranchesSucceeded = true;
+        } catch (GHFileNotFoundException ex) {
+            LOG.debug("No branches found for " + repo.getName(), ex);
+        }
+
+        try {
+            // this crazy looking structure is because getRefs can result in a cache miss (on repos without tags) whereas listTags seems to not have this problem
+            // yes this could probably be re-coded to use listTags directly
+            if (repo.listTags().iterator().hasNext()) {
+                tags = repo.getRefs("refs/tags/");
+            }
+        } catch (GHFileNotFoundException ex) {
+            LOG.debug("No tags found for  " + repo.getName());
+            if (!getBranchesSucceeded) {
+                throw ex;
+            }
+        }
+        return ArrayUtils.addAll(branches, tags);
     }
 
     @Override
@@ -871,6 +945,17 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
     }
 
     @Override
+    public List<SourceControlOrganization> getOrganizations() {
+        try {
+            return github.getMyOrganizations().entrySet().stream()
+                    .map(o -> new SourceControlOrganization(o.getValue().getId(), o.getKey())).collect(Collectors.toList());
+        } catch (IOException e) {
+            LOG.info(githubTokenUsername + ": Cannot retrieve their organizations", e);
+        }
+        return new ArrayList<>();
+    }
+
+    @Override
     public void updateReferenceType(String repositoryId, Version version) {
         if (version.getReferenceType() != Version.ReferenceType.UNSET) {
             return;
@@ -878,8 +963,7 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
         GHRepository repo;
         try {
             repo = github.getRepository(repositoryId);
-            GHRef[] refs = repo.getRefs();
-
+            GHRef[] refs = getBranchesAndTags(repo);
             for (GHRef ref : refs) {
                 String reference = StringUtils.removePattern(ref.getRef(), "refs/.+?/");
                 if (reference.equals(version.getReference())) {
@@ -904,7 +988,7 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
         GHRepository repo;
         try {
             repo = github.getRepository(repositoryId);
-            GHRef[] refs = repo.getRefs();
+            GHRef[] refs = getBranchesAndTags(repo);
 
             for (GHRef ref : refs) {
                 String reference = StringUtils.removePattern(ref.getRef(), "refs/.+?/");
@@ -986,5 +1070,27 @@ public class GitHubSourceCodeRepo extends SourceCodeRepoInterface {
 
         // Create version with sourcefiles and validate
         return setupWorkflowVersionsHelper(workflow, ref, Optional.of(workflow), existingDefaults, ghRepository, dockstoreYml, Optional.empty());
+    }
+
+    /**
+     * Not using org.kohsuke.github.RateLimitHandler.FAIL directly because
+     *
+     * 1. This logs username
+     * 2. We control the string in the error message
+     */
+    private static final class FailRateLimitHandler extends RateLimitHandler {
+
+        private final String username;
+
+        private FailRateLimitHandler(String username) {
+            this.username = username;
+        }
+
+        @Override
+        public void onError(IOException e, HttpURLConnection uc) {
+            LOG.error(OUT_OF_GIT_HUB_RATE_LIMIT + " for " + username);
+            throw new CustomWebApplicationException(OUT_OF_GIT_HUB_RATE_LIMIT, HttpStatus.SC_BAD_REQUEST);
+        }
+
     }
 }

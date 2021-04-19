@@ -29,7 +29,7 @@ fi
 
 ## load up the old database based on current migration
 rm dockstore-webservice/target/dockstore-webservice-*sources.jar || true
-java -jar dockstore-webservice/target/dockstore-webservice-*.jar db migrate dockstore-integration-testing/src/test/resources/dockstore.yml --include 1.3.0.generated,1.4.0,1.5.0,1.6.0,1.7.0,1.8.0,1.9.0,1.10.0
+java -jar dockstore-webservice/target/dockstore-webservice-*.jar db migrate dockstore-integration-testing/src/test/resources/dockstore.yml --include 1.3.0.generated,1.4.0,1.5.0,1.6.0,1.7.0,1.8.0,1.9.0,1.10.0,1.11.0
 
 ## create the new database based on JPA (ugly, should really create a proper dw command if this works)
 ## remove timeout for mac devices, will have to break manually

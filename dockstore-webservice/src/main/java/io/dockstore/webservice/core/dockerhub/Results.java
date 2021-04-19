@@ -26,6 +26,7 @@ public class Results {
 
     private String creator;
 
+    @SerializedName("last_updated")
     private String lastUpdated;
 
     private String name;

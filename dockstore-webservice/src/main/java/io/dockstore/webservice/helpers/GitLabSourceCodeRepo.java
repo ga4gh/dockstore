@@ -33,6 +33,7 @@ import com.google.common.collect.Lists;
 import io.dockstore.common.DescriptorLanguage;
 import io.dockstore.common.SourceControl;
 import io.dockstore.webservice.core.Entry;
+import io.dockstore.webservice.core.SourceControlOrganization;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Version;
 import io.dockstore.webservice.core.Workflow;
@@ -282,6 +283,11 @@ public class GitLabSourceCodeRepo extends SourceCodeRepoInterface {
             LOG.info("could not find " + path + " at " + e.getMessage());
         }
         return null;
+    }
+
+    @Override
+    public List<SourceControlOrganization> getOrganizations() {
+        throw new UnsupportedOperationException("apps not supported for gitlab yet");
     }
 
     @Override

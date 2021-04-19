@@ -18,7 +18,7 @@
     <parent>
         <artifactId>dockstore</artifactId>
         <groupId>io.dockstore</groupId>
-        <version>1.10.0-alpha.3-SNAPSHOT</version>
+        <version>1.11.0-alpha.2-SNAPSHOT</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
 
@@ -29,17 +29,17 @@
         <dependency>
             <groupId>io.dockstore</groupId>
             <artifactId>dockstore-webservice</artifactId>
-            <version>1.10.0-alpha.3-SNAPSHOT</version>
+            <version>1.11.0-alpha.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.dockstore</groupId>
             <artifactId>dockstore-common</artifactId>
-            <version>1.10.0-alpha.3-SNAPSHOT</version>
+            <version>1.11.0-alpha.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>io.dockstore</groupId>
             <artifactId>dockstore-integration-testing</artifactId>
-            <version>1.10.0-alpha.3-SNAPSHOT</version>
+            <version>1.11.0-alpha.2-SNAPSHOT</version>
         </dependency>
     </dependencies>
 
@@ -84,6 +84,10 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
             </plugin>
         </plugins>
     </build>

@@ -39,12 +39,16 @@ public class SourceControlConverter implements AttributeConverter<SourceControl,
 
     @Override
     public SourceControl convertToEntityAttribute(String dbData) {
+        if (dbData == null || dbData.isEmpty()) {
+            LOG.info("Cannot convert null or empty source control");
+            return null;
+        }
         Optional<SourceControl> first = Lists.newArrayList(SourceControl.values()).stream().filter(val -> val.toString().equals(dbData))
             .findFirst();
         if (first.isPresent()) {
             return first.get();
         } else {
-            LOG.error("could not convert token type: " + dbData);
+            LOG.error("could not convert source control: " + dbData);
             return null;
         }
     }

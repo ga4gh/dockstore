@@ -40,6 +40,12 @@ public class YamlWorkflow {
     @NotNull
     private String primaryDescriptorPath;
 
+    /**
+     * Change the workflow's publish-state, if set.
+     * null does nothing; True & False correspond with the current API behaviour of publishing & unpublishing.
+     */
+    private Boolean publish;
+
     private Filters filters = new Filters();
 
     private List<String> testParameterFiles = new ArrayList<>();
@@ -70,6 +76,14 @@ public class YamlWorkflow {
 
     public void setPrimaryDescriptorPath(final String primaryDescriptorPath) {
         this.primaryDescriptorPath = primaryDescriptorPath;
+    }
+
+    public Boolean getPublish() {
+        return publish;
+    }
+
+    public void setPublish(final Boolean publish) {
+        this.publish = publish;
     }
 
     public Filters getFilters() {

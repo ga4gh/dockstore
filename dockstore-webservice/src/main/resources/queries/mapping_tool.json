@@ -1,0 +1,232 @@
+{
+  "settings": {
+    "index": {
+      "number_of_replicas": 0,
+      "analysis": {
+        "filter": {
+          "english_stop": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "unique_stem": {
+            "type": "unique",
+            "only_on_same_position": true
+          },
+          "dockstore_stop": {
+            "type": "stop",
+            "stopwords": [ "https", "http", "see", "from", "use", "usage", "more", "can", "reads", "website", "count" ]
+          }
+        },
+        "analyzer": {
+          "didYouMean": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "html_strip"
+            ],
+            "type": "custom",
+            "tokenizer": "standard"
+          },
+          "text_analyzer":{
+            "type":"custom",
+            "tokenizer":"standard",
+            "filter": [
+              "lowercase",
+              "english_stop",
+              "dockstore_stop",
+              "keyword_repeat",
+              "unique_stem"
+            ],
+            "char_filter": [
+              "html_strip"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "author": {
+        "type": "keyword"
+      },
+      "default_cwl_path": {
+        "type": "text"
+      },
+      "default_dockerfile_path": {
+        "type": "text"
+      },
+      "default_wdl_path": {
+        "type": "text"
+      },
+      "descriptorType": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text",
+        "index": true,
+        "fielddata": true,
+        "analyzer": "text_analyzer"
+      },
+      "email": {
+        "type": "text"
+      },
+      "gitUrl": {
+        "type": "text"
+      },
+      "id": {
+        "type": "long"
+      },
+      "is_published": {
+        "type": "boolean"
+      },
+      "lastBuild": {
+        "format": "epoch_millis",
+        "type": "date"
+      },
+      "lastUpdated": {
+        "format": "epoch_millis",
+        "type": "date"
+      },
+      "mode": {
+        "type": "text"
+      },
+      "name": {
+        "type": "text"
+      },
+      "namespace": {
+        "type": "keyword"
+
+      },
+      "path": {
+        "type": "text"
+      },
+      "private_access": {
+        "type": "boolean"
+      },
+      "registry": {
+        "type": "keyword"
+      },
+      "starredUsers": {
+        "properties": {
+          "id": {
+            "type": "long"
+          }
+        }
+      },
+      "tags": {
+        "include_in_root": true,
+        "properties": {
+          "automated": {
+            "type": "boolean"
+          },
+          "cwl_path": {
+            "type": "text"
+          },
+          "verifiedSource": {
+            "index": "false",
+            "type": "text"
+          },
+          "dirtyBit": {
+            "type": "boolean"
+          },
+          "dockerfile_path": {
+            "type": "text"
+          },
+          "hidden": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "long"
+          },
+          "image_id": {
+            "type": "text"
+          },
+          "last_modified": {
+            "format": "epoch_millis",
+            "type": "date"
+          },
+          "name": {
+            "type": "text"
+          },
+          "reference": {
+            "type": "text"
+          },
+          "size": {
+            "type": "long"
+          },
+          "sourceFiles": {
+            "include_in_root": true,
+            "properties": {
+              "content": {
+                "type": "text",
+                "analyzer": "text_analyzer"
+              },
+              "id": {
+                "type": "long"
+              },
+              "path": {
+                "type": "text"
+              },
+              "type": {
+                "type": "text"
+              }
+            },
+            "type": "nested"
+          },
+          "valid": {
+            "type": "boolean"
+          },
+          "verified": {
+            "type": "boolean"
+          },
+          "wdl_path": {
+            "type": "text"
+          },
+          "workingDirectory": {
+            "type": "text"
+          }
+        },
+        "type": "nested"
+      },
+      "tool_maintainer_email": {
+        "type": "text"
+      },
+      "toolname": {
+        "type": "text"
+      },
+      "users": {
+        "properties": {
+          "avatarUrl": {
+            "type": "text"
+          },
+          "bio": {
+            "type": "text"
+          },
+          "company": {
+            "type": "text"
+          },
+          "email": {
+            "type": "text"
+          },
+          "id": {
+            "type": "long"
+          },
+          "isAdmin": {
+            "type": "boolean"
+          },
+          "location": {
+            "type": "text"
+          },
+          "name": {
+            "type": "text"
+          },
+          "username": {
+            "type": "text"
+          }
+        }
+      }
+    }
+  }
+}

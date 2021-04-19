@@ -16,6 +16,7 @@
 package io.dockstore.webservice.languages;
 
 import java.lang.reflect.InvocationTargetException;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -31,6 +32,7 @@ import io.dockstore.common.VersionTypeValidation;
 import io.dockstore.language.CompleteLanguageInterface;
 import io.dockstore.language.MinimalLanguageInterface;
 import io.dockstore.language.RecommendedLanguageInterface;
+import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.core.DescriptionSource;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Version;
@@ -38,6 +40,7 @@ import io.dockstore.webservice.helpers.SourceCodeRepoInterface;
 import io.dockstore.webservice.jdbi.ToolDAO;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
+import org.apache.http.HttpStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -75,8 +78,18 @@ public class LanguagePluginHandler implements LanguageHandlerInterface {
             String content = null;
             if (mainDescriptor.isPresent()) {
                 content = mainDescriptor.get().getContent();
+            } else {
+                Map<String, String> validationMessage = new HashMap<>();
+                validationMessage.put("Unknown", "Missing the primary descriptor.");
+                return new VersionTypeValidation(false, validationMessage);
             }
-            return ((RecommendedLanguageInterface)minimalLanguageInterface).validateWorkflowSet(primaryDescriptorFilePath, content, sourcefilesToIndexedFiles(sourcefiles));
+
+            try {
+                return ((RecommendedLanguageInterface)minimalLanguageInterface).
+                        validateWorkflowSet(primaryDescriptorFilePath, content, sourcefilesToIndexedFiles(sourcefiles));
+            } catch (Exception e) {
+                throw new CustomWebApplicationException(e.getMessage(), HttpStatus.SC_UNPROCESSABLE_ENTITY);
+            }
         } else {
             return new VersionTypeValidation(true, Collections.emptyMap());
         }
@@ -174,12 +187,18 @@ public class LanguagePluginHandler implements LanguageHandlerInterface {
             final Map<String, Object> maps = ((CompleteLanguageInterface)minimalLanguageInterface)
                 .loadCytoscapeElements(mainDescriptorPath, mainDescriptor, sourcefilesToIndexedFiles(secondarySourceFiles));
             return Optional.of(gson.toJson(maps));
-        } else if (type == Type.TOOLS &&  minimalLanguageInterface instanceof CompleteLanguageInterface) {
+        } else if (type == Type.TOOLS && minimalLanguageInterface instanceof CompleteLanguageInterface) {
             // TODO: hook up tools here for Galaxy
-            final List<CompleteLanguageInterface.RowData> rowData = ((CompleteLanguageInterface)minimalLanguageInterface)
-                .generateToolsTable(mainDescriptorPath, mainDescriptor, sourcefilesToIndexedFiles(secondarySourceFiles));
+            List<CompleteLanguageInterface.RowData> rowData = new ArrayList<>();
+            try {
+                rowData = ((CompleteLanguageInterface)minimalLanguageInterface)
+                        .generateToolsTable(mainDescriptorPath, mainDescriptor, sourcefilesToIndexedFiles(secondarySourceFiles));
+            } catch (NullPointerException e) {
+                LOG.error("could not parse tools from workflow", e);
+                return Optional.empty();
+            }
             final List<Map<String, String>> collect = rowData.stream().map(row -> {
-                Map<String, String> oldRow = new HashMap();
+                Map<String, String> oldRow = new HashMap<>();
                 oldRow.put("id", row.toolid);
                 oldRow.put("file", row.filename);
                 oldRow.put("docker", row.dockerContainer);

@@ -38,6 +38,7 @@ import groovyjarjarantlr.TokenStreamException;
 import io.dockstore.common.DescriptorLanguage;
 import io.dockstore.common.NextflowUtilities;
 import io.dockstore.common.VersionTypeValidation;
+import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.core.DescriptionSource;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Validation;
@@ -48,6 +49,7 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.io.FilenameUtils;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.apache.http.HttpStatus;
 import org.codehaus.groovy.antlr.GroovySourceAST;
 import org.codehaus.groovy.antlr.parser.GroovyLexer;
 import org.codehaus.groovy.antlr.parser.GroovyRecognizer;
@@ -279,10 +281,14 @@ public class NextflowHandler extends AbstractLanguageHandler implements Language
      * Given an AST for a process, returns the name of the process
      *
      * @param processAST AST of a process
-     * @return Process name
+     * @return Process name or null if there isn't one
      */
     private String getProcessValue(GroovySourceAST processAST) {
-        return processAST == null ? null : processAST.getNextSibling().getFirstChild().getFirstChild().getText();
+        try {
+            return processAST == null ? null : processAST.getNextSibling().getFirstChild().getFirstChild().getText();
+        } catch (NullPointerException e) {
+            return null;
+        }
     }
 
     /**
@@ -391,7 +397,13 @@ public class NextflowHandler extends AbstractLanguageHandler implements Language
 
         // nextflow uses the main script from the manifest as the main descriptor
         // add the Nextflow scripts
-        final Configuration configuration = NextflowUtilities.grabConfig(mainDescriptor);
+
+        Configuration configuration = null;
+        try {
+            configuration = NextflowUtilities.grabConfig(mainDescriptor);
+        } catch (NextflowUtilities.NextflowParsingException e) {
+            throw new CustomWebApplicationException(e.getMessage(), HttpStatus.SC_UNPROCESSABLE_ENTITY);
+        }
         String mainScriptPath = "main.nf";
         if (configuration.containsKey("manifest.mainScript")) {
             mainScriptPath = configuration.getString("manifest.mainScript");
@@ -409,13 +421,21 @@ public class NextflowHandler extends AbstractLanguageHandler implements Language
             defaultContainer = configuration.getString("process.container");
         }
 
-        Map<String, String> callToDockerMap = this.getCallsToDockerMap(mainDescriptor, defaultContainer);
+        Map<String, String> callToDockerMap = new HashMap<>();
+        String finalDefaultContainer = defaultContainer;
+
+        // Add all DockerMap from each secondary sourcefile
+        if (!secondarySourceFiles.isEmpty()) {
+            secondarySourceFiles.forEach(sourceFile -> callToDockerMap.putAll(this.getCallsToDockerMap(sourceFile.getContent(), finalDefaultContainer)));
+        }
+
+        callToDockerMap.putAll(this.getCallsToDockerMap(mainDescriptor, defaultContainer));
         // Iterate over each call, determine dependencies
         // Mapping of stepId -> array of dependencies for the step
         Map<String, List<String>> callToDependencies = this.getCallsToDependencies(mainDescriptor);
         // Get import files
         Map<String, String> namespaceToPath = this.getImportMap(mainDescriptor);
-        Map<String, ToolInfo> toolInfoMap = WDLHandler.mapConverterToToolInfo(callToDockerMap, callToDependencies);
+        Map<String, ToolInfo> toolInfoMap = WDLHandler.mapConverterToToolInfo(WDLHandler.convertToDockerParameter(callToDockerMap), callToDependencies);
         return convertMapsToContent(mainScriptPath, type, dao, callType, toolType, toolInfoMap, namespaceToPath);
     }
 
@@ -543,6 +563,9 @@ public class NextflowHandler extends AbstractLanguageHandler implements Language
 
             for (GroovySourceAST processAST : processList) {
                 String processName = getProcessValue(processAST);
+                if (processName == null) {
+                    continue;
+                }
                 GroovySourceAST containerAST = getFirstAstWithKeyword(processAST, "container", false);
                 String containerName;
                 if (containerAST != null) {

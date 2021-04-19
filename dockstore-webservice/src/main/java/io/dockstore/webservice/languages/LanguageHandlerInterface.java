@@ -60,9 +60,7 @@ import io.swagger.quay.client.model.QuayRepo;
 import io.swagger.quay.client.model.QuayTag;
 import org.apache.commons.io.IOUtils;
 import org.apache.commons.lang3.tuple.MutablePair;
-import org.apache.commons.lang3.tuple.MutableTriple;
 import org.apache.commons.lang3.tuple.Pair;
-import org.apache.commons.lang3.tuple.Triple;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.yaml.snakeyaml.Yaml;
@@ -212,7 +210,7 @@ public interface LanguageHandlerInterface {
      * @return Cytoscape compatible JSON with nodes and edges
      */
     default String setupJSONDAG(List<Pair<String, String>> nodePairs, Map<String, ToolInfo> stepToDependencies,
-        Map<String, String> stepToType, Map<String, Triple<String, String, String>> nodeDockerInfo) {
+            Map<String, String> stepToType, Map<String, DockerInfo> nodeDockerInfo) {
         List<Map<String, Map<String, String>>> nodes = new ArrayList<>();
         List<Map<String, Map<String, String>>> edges = new ArrayList<>();
 
@@ -221,7 +219,7 @@ public interface LanguageHandlerInterface {
             String stepId = node.getLeft();
             String dockerUrl = null;
             if (nodeDockerInfo.get(stepId) != null) {
-                dockerUrl = nodeDockerInfo.get(stepId).getRight();
+                dockerUrl = nodeDockerInfo.get(stepId).getDockerUrl();
             }
 
             Map<String, Map<String, String>> nodeEntry = new HashMap<>();
@@ -231,10 +229,8 @@ public interface LanguageHandlerInterface {
             dataEntry.put("name", stepId.replaceFirst("^dockstore_", ""));
             dataEntry.put("type", stepToType.get(stepId));
             if (nodeDockerInfo.get(stepId) != null) {
-                dataEntry.put("docker", nodeDockerInfo.get(stepId).getMiddle());
-            }
-            if (nodeDockerInfo.get(stepId) != null) {
-                dataEntry.put("run", nodeDockerInfo.get(stepId).getLeft());
+                dataEntry.put("docker", nodeDockerInfo.get(stepId).getDockerImage());
+                dataEntry.put("run", nodeDockerInfo.get(stepId).getRunPath());
             }
             nodeEntry.put("data", dataEntry);
             nodes.add(nodeEntry);
@@ -268,20 +264,20 @@ public interface LanguageHandlerInterface {
      * @param nodeDockerInfo map of stepId -> (run path, docker pull, docker url)
      * @return string representation of json table tool content
      */
-    default String getJSONTableToolContent(Map<String, Triple<String, String, String>> nodeDockerInfo) {
+    default String getJSONTableToolContent(Map<String, DockerInfo> nodeDockerInfo) {
         // set up JSON for Table Tool Content for all workflow languages
         ArrayList<Object> tools = new ArrayList<>();
 
         //iterate through each step within workflow file
-        for (Map.Entry<String, Triple<String, String, String>> entry : nodeDockerInfo.entrySet()) {
+        for (Map.Entry<String, DockerInfo> entry : nodeDockerInfo.entrySet()) {
             String key = entry.getKey();
-            Triple<String, String, String> value = entry.getValue();
+            DockerInfo value = entry.getValue();
             //get the idName and fileName
-            String fileName = value.getLeft();
+            String fileName = value.getRunPath();
 
             //get the docker requirement
-            String dockerPullName = value.getMiddle();
-            String dockerLink = value.getRight();
+            String dockerPullName = value.getDockerImage();
+            String dockerLink = value.getDockerUrl();
 
             //put everything into a map, then ArrayList
             Map<String, String> dataToolEntry = new LinkedHashMap<>();
@@ -511,7 +507,10 @@ public interface LanguageHandlerInterface {
                             final String manifestDigest = dockerHubImage.getDigest();
                             Checksum checksum = new Checksum(manifestDigest.split(":")[0], manifestDigest.split(":")[1]);
                             List<Checksum> checksums = Collections.singletonList(checksum);
-                            Image archImage = new Image(checksums, repo, tagName, r.getImageID(), Registry.DOCKER_HUB);
+                            // Docker Hub appears to return null for all the "last_pushed" properties of their images.
+                            // Using the result's "last_pushed" as a workaround
+                            Image archImage = new Image(checksums, repo, tagName, r.getImageID(), Registry.DOCKER_HUB,
+                                    dockerHubImage.getSize(), r.getLastUpdated());
 
                             String osInfo = formatDockerHubInfo(dockerHubImage.getOs(), dockerHubImage.getOsVersion());
                             String archInfo = formatDockerHubInfo(dockerHubImage.getArchitecture(), dockerHubImage.getVariant());
@@ -557,7 +556,7 @@ public interface LanguageHandlerInterface {
             final String digest = tag.getManifestDigest();
             final String imageID = tag.getImageId();
             List<Checksum> checksums = Collections.singletonList(new Checksum(digest.split(":")[0], digest.split(":")[1]));
-            quayImages.add(new Image(checksums, repo, tagName, imageID, Registry.QUAY_IO));
+            quayImages.add(new Image(checksums, repo, tagName, imageID, Registry.QUAY_IO, tag.getSize(), tag.getLastModified()));
         } catch (ApiException ex) {
             LOG.error("Could not read from " + repo, ex);
         }
@@ -595,7 +594,7 @@ public interface LanguageHandlerInterface {
         Map<String, String> callToType = new HashMap<>();
 
         // Initialize data structures for Tool table
-        Map<String, Triple<String, String, String>> nodeDockerInfo = new HashMap<>(); // map of stepId -> (run path, docker image, docker url)
+        Map<String, DockerInfo> nodeDockerInfo = new HashMap<>(); // map of stepId -> (run path, docker image, docker url)
 
         // Create nodePairs, callToType, toolID, and toolDocker
         for (Map.Entry<String, ToolInfo> entry : toolInfoMap.entrySet()) {
@@ -616,9 +615,9 @@ public interface LanguageHandlerInterface {
             String[] callName = callId.replaceFirst("^dockstore_", "").split("\\.");
 
             if (callName.length > 1) {
-                nodeDockerInfo.put(callId, new MutableTriple<>(namespaceToPath.get(callName[0]), docker, dockerUrl));
+                nodeDockerInfo.put(callId, new DockerInfo(namespaceToPath.get(callName[0]), docker, dockerUrl, null));
             } else {
-                nodeDockerInfo.put(callId, new MutableTriple<>(mainDescName, docker, dockerUrl));
+                nodeDockerInfo.put(callId, new DockerInfo(mainDescName, docker, dockerUrl, null));
             }
         }
 
@@ -663,7 +662,32 @@ public interface LanguageHandlerInterface {
         DAG, TOOLS
     }
 
+    enum DockerSpecifier {
+        /**
+         * The image is not a string literal
+         */
+        PARAMETER,
+        /**
+         * The image is a string literal, but doesn't specify a tag
+         */
+        NO_TAG,
+        /**
+         * The image is a string literal with the tag "latest"
+         */
+        LATEST,
+        /**
+         * The image has a tag that is not "latest" nor a digest
+         */
+        TAG,
+        /**
+         * The image tag is a digest
+         */
+        DIGEST
+    }
+
     class ToolInfo {
+
+        protected final DockerSpecifier dockerSpecifier;
 
         /**
          * Currently, the id of a docker container as used by docker pull.
@@ -674,9 +698,49 @@ public interface LanguageHandlerInterface {
          * A list if ids for tools, processes that had to come before
          */
         List<String> toolDependencyList;
+
         ToolInfo(String dockerContainer, List<String> toolDependencyList) {
+            this(dockerContainer, toolDependencyList, null);
+        }
+
+        ToolInfo(final String dockerContainer, final List<String> toolDependencyList, final DockerSpecifier dockerSpecifier) {
             this.dockerContainer = dockerContainer;
             this.toolDependencyList = toolDependencyList;
+            this.dockerSpecifier = dockerSpecifier;
+        }
+    }
+
+    class DockerInfo {
+        private final String runPath;
+        private final String dockerImage;
+        private final String dockerUrl;
+        private final DockerSpecifier dockerSpecifier;
+
+        public DockerInfo(final String runPath, final String dockerImage, final String dockerUrl) {
+            this(runPath, dockerImage, dockerUrl, null);
+        }
+
+        public DockerInfo(final String runPath, final String dockerImage, final String dockerUrl, final DockerSpecifier dockerSpecifier) {
+            this.runPath = runPath;
+            this.dockerImage = dockerImage;
+            this.dockerUrl = dockerUrl;
+            this.dockerSpecifier = dockerSpecifier;
+        }
+
+        public String getRunPath() {
+            return runPath;
+        }
+
+        public String getDockerImage() {
+            return dockerImage;
+        }
+
+        public String getDockerUrl() {
+            return dockerUrl;
+        }
+
+        public DockerSpecifier getDockerSpecifier() {
+            return dockerSpecifier;
         }
     }
 

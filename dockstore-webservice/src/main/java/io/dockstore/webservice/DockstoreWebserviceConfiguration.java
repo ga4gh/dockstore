@@ -617,9 +617,36 @@ public class DockstoreWebserviceConfiguration extends Configuration {
         }
     }
 
-    public class ElasticSearchConfig {
+    public static class ElasticSearchConfig {
         private String hostname;
         private int port;
+        private String protocol;
+        private String user;
+        private String password;
+
+        public String getProtocol() {
+            return protocol;
+        }
+
+        public void setProtocol(final String protocol) {
+            this.protocol = protocol;
+        }
+
+        public String getUser() {
+            return user;
+        }
+
+        public void setUser(final String user) {
+            this.user = user;
+        }
+
+        public String getPassword() {
+            return password;
+        }
+
+        public void setPassword(final String password) {
+            this.password = password;
+        }
 
         public String getHostname() {
             return hostname;

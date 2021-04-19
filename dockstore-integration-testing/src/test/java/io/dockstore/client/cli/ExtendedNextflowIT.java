@@ -123,14 +123,14 @@ public class ExtendedNextflowIT extends BaseIT {
         workflowApi.refresh(workflow.getId(), false);
 
         // do targeted refresh, should promote workflow to fully-fleshed out workflow
-        Workflow workflowByPathBitbucket = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, null, false);
+        Workflow workflowByPathBitbucket = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, "versions", false);
         // need to set paths properly
         workflowByPathBitbucket.setWorkflowPath("/nextflow.config");
         workflowByPathBitbucket.setDescriptorType(Workflow.DescriptorTypeEnum.NFL);
         workflowApi.updateWorkflow(workflowByPathBitbucket.getId(), workflowByPathBitbucket);
-        workflowByPathBitbucket = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, null, false);
+        workflowByPathBitbucket = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, "versions", false);
         final Workflow bitbucketWorkflow = workflowApi.refresh(workflowByPathBitbucket.getId(), false);
-        Workflow byPathWorkflow = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, null, false);
+        Workflow byPathWorkflow = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, "versions", false);
         // There are 3 versions: master, v1.0, and v2.0
         // master and v2.0 has a nextflow.config file that has description and author, v1.0 does not
         // v1.0 will pull description from README instead but the others will use nextflow.config
@@ -141,7 +141,7 @@ public class ExtendedNextflowIT extends BaseIT {
         testingPostgres.runUpdateStatement("update version_metadata set author='bad_potato'");
         testingPostgres.runUpdateStatement("update version_metadata set description='bad_potato'");
         final Workflow refreshedBitbucketWorkflow = workflowApi.refresh(workflowByPathBitbucket.getId(), true);
-        byPathWorkflow = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, null, false);
+        byPathWorkflow = workflowApi.getWorkflowByPath(DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW, "versions", false);
         // This tests if it can fix outdated metadata
         testWorkflowVersionMetadata(refreshedBitbucketWorkflow);
         testWorkflowVersionMetadata(byPathWorkflow);
@@ -154,9 +154,11 @@ public class ExtendedNextflowIT extends BaseIT {
      * @param workflow  The DOCKSTORE_TEST_USER_NEXTFLOW_BITBUCKET_WORKFLOW workflow
      */
     private void testWorkflowVersionMetadata(Workflow workflow) {
+
         final String partialReadmeDescription = "AMPA-NF is a pipeline for assessing the antimicrobial domains of proteins,";
         final String descriptorDescription = "Fast automated prediction of protein antimicrobial regions";
         final String versionWithReadmeDescription = "v1.0";
+
         Assert.assertEquals(descriptorDescription, workflow.getDescription());
         Assert.assertTrue(workflow.getWorkflowVersions().stream().anyMatch(workflowVersion -> workflowVersion.getName().equals(versionWithReadmeDescription)));
         workflow.getWorkflowVersions().forEach(workflowVersion -> {

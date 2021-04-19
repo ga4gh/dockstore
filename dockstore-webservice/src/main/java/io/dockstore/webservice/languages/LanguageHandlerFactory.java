@@ -100,11 +100,4 @@ public final class LanguageHandlerFactory {
         return pluginMap;
     }
 
-    /**
-     * Get map of activated plugins by filetype
-     * @return activated plugins by filetype
-     */
-    public static Map<FileType, MinimalLanguageInterface> getFileTypeMap() {
-        return fileTypeMap;
-    }
 }

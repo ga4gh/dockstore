@@ -96,7 +96,7 @@ public class EventResourceIT extends BaseIT {
 
         // Publish
         if (toPublish) {
-            tool = containersApi.publish(tool.getId(), SwaggerUtility.createPublishRequest(true));
+            tool = containersApi.publish(tool.getId(), CommonTestUtilities.createPublishRequest(true));
             assertTrue(tool.isIsPublished());
         }
         return tool;

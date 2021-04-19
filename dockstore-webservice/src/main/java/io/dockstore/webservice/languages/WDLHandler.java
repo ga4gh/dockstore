@@ -25,6 +25,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
@@ -35,9 +36,14 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
+import com.github.zafarkhaja.semver.UnexpectedCharacterException;
+import com.github.zafarkhaja.semver.expr.LexerException;
+import com.github.zafarkhaja.semver.expr.UnexpectedTokenException;
 import com.google.common.base.Strings;
 import com.google.common.io.Files;
 import io.dockstore.common.DescriptorLanguage;
+import io.dockstore.common.DockerImageReference;
+import io.dockstore.common.DockerParameter;
 import io.dockstore.common.LanguageHandlerHelper;
 import io.dockstore.common.VersionTypeValidation;
 import io.dockstore.common.WdlBridge;
@@ -65,7 +71,10 @@ public class WDLHandler implements LanguageHandlerInterface {
     public static final Logger LOG = LoggerFactory.getLogger(WDLHandler.class);
     public static final String ERROR_PARSING_WORKFLOW_YOU_MAY_HAVE_A_RECURSIVE_IMPORT = "Error parsing workflow. You may have a recursive import.";
     public static final String ERROR_PARSING_WORKFLOW_RECURSIVE_LOCAL_IMPORT = "Recursive local import detected: ";
+    public static final String WDL_PARSE_ERROR = "Unable to parse WDL workflow, ";
     private static final Pattern IMPORT_PATTERN = Pattern.compile("^import\\s+\"(\\S+)\"");
+
+    private static final String LATEST_SUPPORTED_WDL_VERSION = "1.0";
 
     public static void checkForRecursiveLocalImports(String content, Set<SourceFile> sourceFiles, Set<String> absolutePaths, String parent)
             throws ParseException {
@@ -159,7 +168,9 @@ public class WDLHandler implements LanguageHandlerInterface {
             } catch (WdlParser.SyntaxError ex) {
                 LOG.error("Unable to parse WDL file " + filepath, ex);
                 Map<String, String> validationMessageObject = new HashMap<>();
-                validationMessageObject.put(filepath, "WDL file is malformed or missing, cannot extract metadata. " + ex.getMessage());
+                String errorMessage = "WDL file is malformed or missing, cannot extract metadata. " + ex.getMessage();
+                errorMessage = getUnsupportedWDLVersionErrorString(tempMainDescriptor.getAbsolutePath()).orElse(errorMessage);
+                validationMessageObject.put(filepath, errorMessage);
                 version.addOrUpdateValidation(new Validation(DescriptorLanguage.FileType.DOCKSTORE_WDL, false, validationMessageObject));
                 version.setAuthor(null);
                 version.setDescriptionAndDescriptionSource(null, null);
@@ -271,7 +282,13 @@ public class WDLHandler implements LanguageHandlerInterface {
                     wdlBridge.validateWorkflow(tempMainDescriptor.getAbsolutePath(), primaryDescriptor.get().getAbsolutePath());
                 }
             } catch (WdlParser.SyntaxError | IllegalArgumentException e) {
-                validationMessageObject.put(primaryDescriptorFilePath, e.getMessage());
+                if (tempMainDescriptor != null) {
+                    validationMessageObject.put(primaryDescriptorFilePath,
+                            getUnsupportedWDLVersionErrorString(tempMainDescriptor.getAbsolutePath()).
+                                    orElse(e.getMessage()));
+                } else {
+                    validationMessageObject.put(primaryDescriptorFilePath, e.getMessage());
+                }
                 return new VersionTypeValidation(false, validationMessageObject);
             } catch (CustomWebApplicationException e) {
                 throw e;
@@ -306,7 +323,7 @@ public class WDLHandler implements LanguageHandlerInterface {
                 if (match.startsWith("http://") || match.startsWith("https://")) { // Don't resolve URLs
                     if (currentFileImports.contains(match)) {
                         throw new CustomWebApplicationException(ERROR_PARSING_WORKFLOW_YOU_MAY_HAVE_A_RECURSIVE_IMPORT,
-                                HttpStatus.SC_BAD_REQUEST);
+                                HttpStatus.SC_UNPROCESSABLE_ENTITY);
                     } else {
                         URL url = new URL(match);
                         try (InputStream is = url.openStream();
@@ -422,19 +439,38 @@ public class WDLHandler implements LanguageHandlerInterface {
             wdlBridge.setSecondaryFiles(new HashMap<>(pathToContentMap));
 
             // Iterate over each call, grab docker containers
-            Map<String, String> callsToDockerMap = wdlBridge.getCallsToDockerMap(tempMainDescriptor.getAbsolutePath(), mainDescName);
+            Map<String, DockerParameter> callsToDockerMap = wdlBridge.getCallsToDockerMap(tempMainDescriptor.getAbsolutePath(), mainDescName);
 
             // Iterate over each call, determine dependencies
             Map<String, List<String>> callsToDependencies = wdlBridge.getCallsToDependencies(tempMainDescriptor.getAbsolutePath(), mainDescName);
             toolInfoMap = mapConverterToToolInfo(callsToDockerMap, callsToDependencies);
+
             // Get import files
             namespaceToPath = wdlBridge.getImportMap(tempMainDescriptor.getAbsolutePath(), mainDescName);
-        } catch (IOException | NoSuchElementException | WdlParser.SyntaxError e) {
-            throw new CustomWebApplicationException("could not process wdl into DAG: " + e.getMessage(), HttpStatus.SC_INTERNAL_SERVER_ERROR);
+        } catch (WdlParser.SyntaxError ex) {
+            String exMsg = WDLHandler.WDL_PARSE_ERROR + ex.getMessage();
+            exMsg = getUnsupportedWDLVersionErrorString(tempMainDescriptor.getAbsolutePath()).orElse(exMsg);
+            LOG.error(exMsg, ex);
+            throw new CustomWebApplicationException(exMsg, HttpStatus.SC_UNPROCESSABLE_ENTITY);
+        } catch (IOException | NoSuchElementException ex) {
+            final String exMsg = "Could not process request, " + ex.getMessage();
+            LOG.error(exMsg, ex);
+            throw new CustomWebApplicationException(exMsg, HttpStatus.SC_INTERNAL_SERVER_ERROR);
         } finally {
             FileUtils.deleteQuietly(tempMainDescriptor);
         }
         return convertMapsToContent(mainDescName, type, dao, callType, toolType, toolInfoMap, namespaceToPath);
+    }
+
+    /**
+     * Convenience function to convert old map with values of Docker image names to values of DockerParameter
+     *
+     * @param callsToDockerMap
+     * @return
+     */
+    protected static Map<String, DockerParameter> convertToDockerParameter(Map<String, String> callsToDockerMap) {
+        return callsToDockerMap.entrySet().stream().collect(
+                Collectors.toMap(Map.Entry::getKey, v -> new DockerParameter(v.getValue(), DockerImageReference.UNKNOWN), (x, y) -> y, LinkedHashMap::new));
     }
 
     /**
@@ -443,14 +479,14 @@ public class WDLHandler implements LanguageHandlerInterface {
      * @param callsToDependencies map from names of tools to names of their parent tools (dependencies)
      * @return
      */
-    static Map<String, ToolInfo> mapConverterToToolInfo(Map<String, String> callsToDockerMap, Map<String, List<String>> callsToDependencies) {
+    protected static Map<String, ToolInfo> mapConverterToToolInfo(Map<String, DockerParameter> callsToDockerMap, Map<String, List<String>> callsToDependencies) {
         Map<String, ToolInfo> toolInfoMap;
         toolInfoMap = new HashMap<>();
-        callsToDockerMap.forEach((toolName, containerName) -> toolInfoMap.compute(toolName, (key, value) -> {
+        callsToDockerMap.forEach((toolName, dockerParameter) -> toolInfoMap.compute(toolName, (key, value) -> {
             if (value == null) {
-                return new ToolInfo(containerName, new ArrayList<>());
+                return new ToolInfo(dockerParameter.imageName(), new ArrayList<>());
             } else {
-                value.dockerContainer = containerName;
+                value.dockerContainer = dockerParameter.imageName();
                 return value;
             }
         }));
@@ -463,5 +499,87 @@ public class WDLHandler implements LanguageHandlerInterface {
             }
         }));
         return toolInfoMap;
+    }
+
+    /**
+     * Convert a possibly invalid semantic version string to a valid semantic version string
+     * @param semVerString semantic version string to convert
+     * @return a valid semantic version string
+     */
+    public static String enhanceSemanticVersionString(String semVerString) {
+        // according to https://semver.org/
+        // A normal version number MUST take the form X.Y.Z where X, Y, and Z are
+        // non-negative integers, and MUST NOT contain leading zeroes.
+        // Unfortunately WDL uses an invalid version number, e.g. '1.1' without
+        // a third integer so we will have to fix it so we can use semver
+        // We use a regex to find out if the version string is incomplete,
+        // e.g. '1.1' or '1.1-foo' and insert a '.0' after X.Y to make it X.Y.Z,
+        // e.g. '1.1.0' or '1.1.0-foo'
+        // We match X.Y only at the beginning of the string
+        // https://stackoverflow.com/questions/45544010/regex-to-match-a-digit-not-followed-by-a-dot
+        return semVerString.replaceFirst("^(\\d+\\.\\d+)(?!\\.)(.*)", "$1\\.0$2");
+    }
+
+    /**
+     * Check if the input semantic version string is greater than the newest currently supported WDL semantic version string
+     * @param semVerString semantic version string to compare
+     * @return whether the input semantic version string is greater
+     */
+    public static boolean versionIsGreaterThanCurrentlySupported(String semVerString) {
+        String enhancedSemVerString = enhanceSemanticVersionString(semVerString);
+
+        com.github.zafarkhaja.semver.Version semVer;
+        try {
+            semVer = com.github.zafarkhaja.semver.Version.valueOf(enhancedSemVerString);
+        } catch (IllegalArgumentException | UnexpectedCharacterException | LexerException | UnexpectedTokenException ex) {
+            // https://github.com/zafarkhaja/jsemver#exception-handling
+            // if semVer cannot parse the version string it is probably not a good version string
+            // Paradoxically semver would fail to parse the valid version string 'draft-3'
+            // Fortunately 'draft-3' is not a newer version than currently supported version '1.0'
+            // In general return false since we cannot determine if the version is greater than Dockstore's
+            // currently supported WDL version
+            return false;
+        }
+        return semVer.greaterThan(com.github.zafarkhaja.semver.Version.valueOf(
+                enhanceSemanticVersionString(LATEST_SUPPORTED_WDL_VERSION)));
+    }
+
+    /**
+     * Get the semantic version string from the WDL file
+     * @param primaryDescriptorPath path to the primary WDL descriptor
+     * @return the semantic version string, e.g. '1.0', which should be in the first code line, e.g. 'version 1.0' or 'draft-3'
+     */
+    public static Optional<String> getSemanticVersionString(String primaryDescriptorPath) {
+        WdlBridge wdlBridge = new WdlBridge();
+        Optional<String> firstCodeLine = wdlBridge.getFirstCodeLine(primaryDescriptorPath);
+        // https://www.scala-lang.org/files/archive/api/2.13.x/scala/jdk/javaapi/OptionConverters$.html
+        // The WDL specification says that WDL descriptors from now on must have
+        // a version string as the first line, e.g. 'version 1.0' or 'version draft-3'
+        // https://github.com/openwdl/wdl/blob/main/versions/1.0/SPEC.md#versioning
+        // however some very old WDL scripts may not have a version string line
+        // Check to see if we found the first line of code and that it has two parts
+        if (firstCodeLine.isPresent()) {
+            String semanticVersionLine = firstCodeLine.get();
+            String[] semanticVersionStringArray = semanticVersionLine.split("\\s+");
+            // If there is a version string line the first part should be 'version'
+            if (semanticVersionStringArray[0].equals("version") && semanticVersionStringArray.length == 2) {
+                // Return the version such as '1.0' or 'draft-3'
+                // Note: if the programmer made a mistake this could be some
+                // bogus string but we will have semver check it later
+                return Optional.of(semanticVersionStringArray[1]);
+            }
+        }
+        // otherwise return nothing
+        return Optional.empty();
+    }
+
+    public static Optional<String> getUnsupportedWDLVersionErrorString(String primaryDescriptorPath) {
+        Optional<String> semVersionString = getSemanticVersionString(primaryDescriptorPath);
+        if (semVersionString.isPresent() && versionIsGreaterThanCurrentlySupported(semVersionString.get())) {
+            return Optional.of("Dockstore only supports up to  WDL version " + LATEST_SUPPORTED_WDL_VERSION + ". The version of"
+                    + " this workflow is " + semVersionString.get() + ". Dockstore cannot verify or parse this WDL version.");
+        } else {
+            return Optional.empty();
+        }
     }
 }

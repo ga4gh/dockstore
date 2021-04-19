@@ -24,6 +24,7 @@ import javax.persistence.Entity;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
+import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
@@ -42,7 +43,10 @@ import org.hibernate.annotations.UpdateTimestamp;
 @ApiModel(value = "FileFormat", description = "This describes an input or output file format that is associated with an entry in the dockstore")
 @Entity
 @Table(name = "fileformat")
-@NamedQuery(name = "io.dockstore.webservice.core.FileFormat.findByFileFormatValue", query = "SELECT l FROM FileFormat l WHERE l.value = :fileformatValue")
+@NamedQueries({
+        @NamedQuery(name = "io.dockstore.webservice.core.FileFormat.findByFileFormatValue", query = "SELECT l FROM FileFormat l WHERE l.value = :fileformatValue")
+})
+
 public class FileFormat implements Comparable<FileFormat> {
 
     private static final Comparator<String> NULL_SAFE_STRING_COMPARATOR = Comparator

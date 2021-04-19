@@ -40,4 +40,8 @@ public class PublishRequest {
     public boolean getPublish() {
         return publish;
     }
+
+    public void setPublish(boolean publish) {
+        this.publish = publish;
+    }
 }

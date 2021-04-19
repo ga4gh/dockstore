@@ -27,6 +27,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
+import javax.persistence.Transient;
 import javax.persistence.UniqueConstraint;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
@@ -37,6 +38,7 @@ import io.dockstore.webservice.helpers.EntryStarredSerializer;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
+import org.apache.commons.lang3.StringUtils;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
@@ -119,6 +121,11 @@ public class Organization implements Serializable, Aliasable {
     @OneToMany(mappedBy = "organization")
     private Set<Collection> collections = new HashSet<>();
 
+    @Transient
+    @JsonSerialize
+    @ApiModelProperty(value = "collectionsLength")
+    private long collectionsLength;
+
     @ElementCollection(targetClass = Alias.class)
     @JoinTable(name = "organization_alias", joinColumns = @JoinColumn(name = "id"), uniqueConstraints = @UniqueConstraint(name = "unique_org_aliases", columnNames = { "alias" }))
     @MapKeyColumn(name = "alias", columnDefinition = "text")
@@ -180,6 +187,10 @@ public class Organization implements Serializable, Aliasable {
     }
 
     public void setLink(String link) {
+        // // Avoid setting link as empty in order to reduce complications in DB
+        if (StringUtils.isEmpty(link)) {
+            link = null;
+        }
         this.link = link;
     }
 
@@ -196,6 +207,10 @@ public class Organization implements Serializable, Aliasable {
     }
 
     public void setEmail(String email) {
+        // // Avoid setting email as empty in order to reduce complications in DB
+        if (StringUtils.isEmpty(email)) {
+            email = null;
+        }
         this.email = email;
     }
 
@@ -241,6 +256,14 @@ public class Organization implements Serializable, Aliasable {
 
     public void setCollections(Set<Collection> collections) {
         this.collections = collections;
+    }
+
+    public long getCollectionsLength() {
+        return collectionsLength; 
+    }
+
+    public void setCollectionsLength(long length) {
+        this.collectionsLength = length; 
     }
 
     public void addCollection(Collection collection) {

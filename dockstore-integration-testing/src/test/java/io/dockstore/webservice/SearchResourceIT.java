@@ -16,10 +16,8 @@
 package io.dockstore.webservice;
 
 import io.dockstore.client.cli.BaseIT;
-import io.dockstore.client.cli.SwaggerUtility;
 import io.dockstore.client.cli.WorkflowIT;
 import io.dockstore.common.CommonTestUtilities;
-import io.dockstore.common.ConfidentialTest;
 import io.swagger.client.ApiClient;
 import io.swagger.client.ApiException;
 import io.swagger.client.ApiResponse;
@@ -35,7 +33,6 @@ import org.junit.Test;
 import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.junit.contrib.java.lang.system.SystemErrRule;
 import org.junit.contrib.java.lang.system.SystemOutRule;
-import org.junit.experimental.categories.Category;
 import org.junit.rules.ExpectedException;
 
 import static io.dockstore.common.CommonTestUtilities.restartElasticsearch;
@@ -46,7 +43,6 @@ import static org.junit.Assert.fail;
 /**
  * @author dyuen
  */
-@Category(ConfidentialTest.class)
 public class SearchResourceIT extends BaseIT {
 
     @Rule
@@ -80,7 +76,9 @@ public class SearchResourceIT extends BaseIT {
     private void waitForIndexRefresh(int hit, ExtendedGa4GhApi extendedGa4GhApi, int counter) {
         try {
             String s = extendedGa4GhApi.toolsIndexSearch(exampleESQuery);
-            if (!s.contains("\"total\":" + hit)) {
+            // There's actually two "total", one for shards and one for hits.
+            // Need to only look at the hits one
+            if (!s.contains("hits\":{\"total\":{\"value\":" + hit + ",")) {
                 if (counter > 5) {
                     Assert.fail(s + " does not have the correct amount of hits");
                 } else {
@@ -108,11 +106,11 @@ public class SearchResourceIT extends BaseIT {
         workflowApi.manualRegister("github", "DockstoreTestUser2/dockstore_workflow_cnv", "/workflow/cnv.cwl", "", "cwl", "/test.json");
         final Workflow workflowByPathGithub = workflowApi
             .getWorkflowByPath(WorkflowIT.DOCKSTORE_TEST_USER2_RELATIVE_IMPORTS_WORKFLOW, null, false);
-        // do targetted refresh, should promote workflow to fully-fleshed out workflow
+        // do targeted refresh, should promote workflow to fully-fleshed out workflow
         final Workflow workflow = workflowApi.refresh(workflowByPathGithub.getId(), false);
         entriesApi.addAliases(workflow.getId(), "potatoAlias");
-        workflowApi.publish(workflow.getId(), SwaggerUtility.createPublishRequest(false));
-        workflowApi.publish(workflow.getId(), SwaggerUtility.createPublishRequest(true));
+        workflowApi.publish(workflow.getId(), CommonTestUtilities.createPublishRequest(false));
+        workflowApi.publish(workflow.getId(), CommonTestUtilities.createPublishRequest(true));
         waitForIndexRefresh(1, extendedGa4GhApi,  0);
         // after publication index should include workflow
         String s = extendedGa4GhApi.toolsIndexSearch(exampleESQuery);
@@ -141,11 +139,11 @@ public class SearchResourceIT extends BaseIT {
         // Update the search index
         extendedGa4GhApi.toolsIndexGet();
         waitForIndexRefresh(0, extendedGa4GhApi,  0);
-        // Should still fail even with index
         try {
             metadataApi.checkElasticSearch();
+            fail("Should fail even with index because there's no hits");
         } catch (ApiException ex) {
-            assertTrue("Should fail", true);
+            assertTrue(ex.getMessage().contains("Internal Server Error"));
         }
 
         // Register and publish workflow
@@ -156,7 +154,7 @@ public class SearchResourceIT extends BaseIT {
         // do targetted refresh, should promote workflow to fully-fleshed out workflow
         final Workflow workflow = workflowApi.refresh(workflowByPathGithub.getId(), false);
 
-        workflowApi.publish(workflow.getId(), SwaggerUtility.createPublishRequest(true));
+        workflowApi.publish(workflow.getId(), CommonTestUtilities.createPublishRequest(true));
 
         waitForIndexRefresh(1, extendedGa4GhApi,  0);
 

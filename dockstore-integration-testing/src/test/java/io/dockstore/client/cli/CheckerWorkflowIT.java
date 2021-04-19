@@ -89,8 +89,8 @@ public class CheckerWorkflowIT extends BaseIT {
         WorkflowsApi workflowApi = new WorkflowsApi(webClient);
         ContainersApi containersApi = new ContainersApi(webClient);
 
-        final PublishRequest publishRequest = SwaggerUtility.createPublishRequest(true);
-        final PublishRequest unpublishRequest = SwaggerUtility.createPublishRequest(false);
+        final PublishRequest publishRequest = CommonTestUtilities.createPublishRequest(true);
+        final PublishRequest unpublishRequest = CommonTestUtilities.createPublishRequest(false);
 
         // Manually register a tool
         DockstoreTool newTool = new DockstoreTool();
@@ -113,10 +113,11 @@ public class CheckerWorkflowIT extends BaseIT {
         assertTrue(refresh.getWorkflowVersions().stream().anyMatch(tag -> tag.getOutputFileFormats().stream()
             .anyMatch(fileFormat -> fileFormat.getValue().equals("http://edamontology.org/data_3671"))));
         assertTrue(refresh.getOutputFileFormats().stream()
-            .anyMatch(fileFormat -> fileFormat.getValue().equals("http://edamontology.org/data_3671")));
+                .anyMatch(fileFormat -> fileFormat.getValue().equals("http://edamontology.org/data_3671")));
         assertTrue(refresh.getWorkflowVersions().stream().anyMatch(
             tag -> tag.getInputFileFormats().stream().anyMatch(fileFormat -> fileFormat.getValue().equals("file://fakeFileFormat"))));
         assertTrue(refresh.getInputFileFormats().stream().anyMatch(fileFormat -> fileFormat.getValue().equals("file://fakeFileFormat")));
+
 
         // Add checker workflow
         workflowApi.registerCheckerWorkflow("/checker-workflow-wrapping-tool.cwl", githubTool.getId(), "cwl", null);
@@ -296,8 +297,8 @@ public class CheckerWorkflowIT extends BaseIT {
         final ApiClient webClient = getWebClient(USER_2_USERNAME, testingPostgres);
         WorkflowsApi workflowApi = new WorkflowsApi(webClient);
 
-        final PublishRequest publishRequest = SwaggerUtility.createPublishRequest(true);
-        final PublishRequest unpublishRequest = SwaggerUtility.createPublishRequest(false);
+        final PublishRequest publishRequest = CommonTestUtilities.createPublishRequest(true);
+        final PublishRequest unpublishRequest = CommonTestUtilities.createPublishRequest(false);
 
         // Manually register a workflow
         Workflow githubWorkflow = workflowApi
@@ -389,8 +390,8 @@ public class CheckerWorkflowIT extends BaseIT {
         final ApiClient webClient = getWebClient(USER_2_USERNAME, testingPostgres);
         WorkflowsApi workflowApi = new WorkflowsApi(webClient);
 
-        final PublishRequest publishRequest = SwaggerUtility.createPublishRequest(true);
-        final PublishRequest unpublishRequest = SwaggerUtility.createPublishRequest(false);
+        final PublishRequest publishRequest = CommonTestUtilities.createPublishRequest(true);
+        final PublishRequest unpublishRequest = CommonTestUtilities.createPublishRequest(false);
 
         // Manually register a workflow
         Workflow githubWorkflow = workflowApi

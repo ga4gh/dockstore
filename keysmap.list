@@ -1,0 +1,12 @@
+io.swagger.core.v3:swagger-annotations:jar:2.1.7 			        = noSig
+com.fasterxml.jackson.datatype:jackson-datatype-joda:pom:2.12.1     = badSig
+com.fasterxml.jackson.core:jackson-databind:pom:2.12.1 			    = badSig
+com.fasterxml.jackson.core:jackson-annotations:pom:2.12.1 		    = badSig
+com.fasterxml.jackson.core:jackson-core:pom:2.12.1 			        = badSig
+com.fasterxml.jackson.dataformat:jackson-dataformat-xml:pom:2.12.1  = badSig
+org.kohsuke:github-api:pom:1.123                                    = badSig
+com.spotify:docker-client:pom:8.16.0                                = badSig
+
+
+* 									                                = noSig
+*									                                = any

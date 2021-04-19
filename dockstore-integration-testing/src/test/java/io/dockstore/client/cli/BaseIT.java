@@ -50,13 +50,18 @@ import org.junit.runner.Description;
 @Category(ConfidentialTest.class)
 public class BaseIT {
 
+    // This is obviously an admin
     public static final String ADMIN_USERNAME = "admin@admin.com";
+    // This is also an admin
     public static final String USER_1_USERNAME = "DockstoreTestUser";
+    // This is also an admin
     public static final String USER_2_USERNAME = "DockstoreTestUser2";
     public static final DropwizardTestSupport<DockstoreWebserviceConfiguration> SUPPORT = new DropwizardTestSupport<>(
         DockstoreWebserviceApplication.class, CommonTestUtilities.CONFIDENTIAL_CONFIG_PATH);
     protected static TestingPostgres testingPostgres;
+    // This is not an admin
     static final String OTHER_USERNAME = "OtherUser";
+
     @Rule
     public final TestRule watcher = new TestWatcher() {
         protected void starting(Description description) {
@@ -88,9 +93,9 @@ public class BaseIT {
 
     @AfterClass
     public static void afterClass() {
+        SUPPORT.getEnvironment().healthChecks().shutdown();
         SUPPORT.after();
     }
-
 
     protected static io.dockstore.openapi.client.ApiClient getOpenAPIWebClient(String username, TestingPostgres testingPostgresParameter) {
         return CommonTestUtilities.getOpenAPIWebClient(true, username, testingPostgresParameter);
@@ -127,6 +132,14 @@ public class BaseIT {
         File configFile = FileUtils.getFile("src", "test", "resources", "config");
         INIConfiguration parseConfig = Utilities.parseConfig(configFile.getAbsolutePath());
         ApiClient client = new ApiClient();
+        client.setBasePath(parseConfig.getString(Constants.WEBSERVICE_BASE_PATH));
+        return client;
+    }
+
+    protected static io.dockstore.openapi.client.ApiClient getAnonymousOpenAPIWebClient() {
+        File configFile = FileUtils.getFile("src", "test", "resources", "config");
+        INIConfiguration parseConfig = Utilities.parseConfig(configFile.getAbsolutePath());
+        io.dockstore.openapi.client.ApiClient client = new io.dockstore.openapi.client.ApiClient();
         client.setBasePath(parseConfig.getString(Constants.WEBSERVICE_BASE_PATH));
         return client;
     }

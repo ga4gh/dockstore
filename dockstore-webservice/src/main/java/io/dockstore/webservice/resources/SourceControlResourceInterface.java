@@ -50,14 +50,13 @@ public interface SourceControlResourceInterface {
      * @param tokenDAO
      * @param bitbucketClientID
      * @param bitbucketClientSecret
-     * @return the updated token
      */
-    default Token refreshBitbucketToken(Token token, HttpClient client, TokenDAO tokenDAO, String bitbucketClientID,
+    default void refreshBitbucketToken(Token token, HttpClient client, TokenDAO tokenDAO, String bitbucketClientID,
         String bitbucketClientSecret) {
 
         String refreshUrl = BITBUCKET_URL + "site/oauth2/access_token";
         String payload = "grant_type=refresh_token&refresh_token=" + token.getRefreshToken();
-        return refreshToken(refreshUrl, token, client, tokenDAO, bitbucketClientID, bitbucketClientSecret, payload);
+        refreshToken(refreshUrl, token, client, tokenDAO, bitbucketClientID, bitbucketClientSecret, payload);
     }
 
     /**
@@ -106,8 +105,8 @@ public interface SourceControlResourceInterface {
                     domain = "web site";
                     LOG.debug(e.getMessage(), e);
                 }
-                throw new CustomWebApplicationException("Could not retrieve " + domain + " token based on code",
-                        HttpStatus.SC_INTERNAL_SERVER_ERROR);
+                throw new CustomWebApplicationException("Could not retrieve " + domain + " access token using your refresh token. Please re-link your account for " + domain,
+                        HttpStatus.SC_UNAUTHORIZED);
             }
         } catch (UnsupportedEncodingException ex) {
             LOG.info(token.getUsername() + ": " + ex.toString());

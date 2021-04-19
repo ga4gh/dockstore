@@ -63,6 +63,10 @@ public class GA4GHV1IT extends GA4GHIT {
     @Test
     @Override
     public void testTools() throws Exception {
+        // The other test which uses a different DB manages to cache the endpoint with different tools
+        // Restart application to clear cache
+        SUPPORT.after();
+        SUPPORT.before();
         Response response = checkedResponse(baseURL + "tools");
         List<ToolV1> responseObject = response.readEntity(new GenericType<List<ToolV1>>() {
         });

@@ -10,8 +10,8 @@ import com.google.common.cache.LoadingCache;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import io.dockstore.webservice.DockstoreWebserviceApplication;
 import okhttp3.MediaType;
-import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -22,22 +22,14 @@ public class CacheConfigManager {
 
     private static final Logger LOG = LoggerFactory.getLogger(CacheConfigManager.class);
 
-    private static CacheConfigManager cacheConfigManager = new CacheConfigManager();
+    private static final CacheConfigManager CACHE_CONFIG_MANAGER = new CacheConfigManager();
 
     private static LoadingCache<String, String> installationAccessTokenCache;
 
     private static volatile String jsonWebToken;
 
     public static CacheConfigManager getInstance() {
-        return cacheConfigManager;
-    }
-
-    /**
-     * Retrieve the JWT
-     * @return JWT string
-     */
-    public static String getJsonWebToken() {
-        return jsonWebToken;
+        return CACHE_CONFIG_MANAGER;
     }
 
     /**
@@ -54,8 +46,6 @@ public class CacheConfigManager {
      * @return Installation Access Token
      */
     private String getInstallationAccessTokenFromInstallationId(String installationId) throws Exception {
-        OkHttpClient client = new OkHttpClient();
-
         Request request = new Request.Builder()
                 .url("https://api.github.com/app/installations/" + installationId + "/access_tokens")
                 .post(RequestBody.create(MediaType.parse(""), "")) // Empty body to appease library
@@ -65,7 +55,7 @@ public class CacheConfigManager {
 
         String errorMsg = "Unable to retrieve installation access token.";
         try {
-            Response response = client.newCall(request).execute();
+            Response response = DockstoreWebserviceApplication.getOkHttpClient().newCall(request).execute();
             JsonElement body = new JsonParser().parse(response.body().string());
             if (body.isJsonObject()) {
                 JsonObject responseBody = body.getAsJsonObject();

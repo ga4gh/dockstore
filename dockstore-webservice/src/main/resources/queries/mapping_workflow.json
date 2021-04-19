@@ -1,0 +1,102 @@
+{
+  "settings": {
+    "index": {
+      "number_of_replicas": 0,
+      "analysis": {
+        "filter": {
+          "english_stop": {
+            "type": "stop",
+            "stopwords": "_english_"
+          },
+          "unique_stem": {
+            "type": "unique",
+            "only_on_same_position": true
+          },
+          "dockstore_stop": {
+            "type": "stop",
+            "stopwords": [ "https", "http", "see", "from", "use", "usage", "more", "can", "reads", "website", "count" ]
+          }
+        },
+        "analyzer": {
+          "didYouMean": {
+            "filter": [
+              "lowercase"
+            ],
+            "char_filter": [
+              "html_strip"
+            ],
+            "type": "custom",
+            "tokenizer": "standard"
+          },
+          "text_analyzer":{
+            "type":"custom",
+            "tokenizer":"standard",
+            "filter": [
+              "lowercase",
+              "english_stop",
+              "dockstore_stop",
+              "keyword_repeat",
+              "unique_stem"
+            ],
+            "char_filter": [
+              "html_strip"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "mappings": {
+    "properties": {
+      "author": {
+        "type": "keyword"
+      },
+      "defaultVersion": {
+        "type": "keyword"
+      },
+      "description": {
+        "type": "text",
+        "fielddata": true,
+        "index": true,
+        "analyzer": "text_analyzer"
+      },
+      "descriptorType": {
+        "type": "keyword"
+      },
+      "email": {
+        "type": "text"
+      },
+      "gitUrl": {
+        "type": "text"
+      },
+      "id": {
+        "type": "long"
+      },
+      "is_published": {
+        "type": "boolean"
+      },
+      "lastUpdated": {
+        "format": "epoch_millis",
+        "type": "date"
+      },
+      "mode": {
+        "type": "text"
+      },
+      "organization": {
+        "type": "keyword"
+      },
+      "path": {
+        "type": "text"
+      },
+      "repository": {
+        "type": "keyword"
+      },
+      "workflowName": {
+        "type": "keyword"
+      },
+      "workflow_path": {
+        "type": "keyword"
+      }
+    }
+  }
+}

@@ -589,7 +589,8 @@ definitions:
         type: string
       size:
         description: TBD
-        type: long
+        type: integer
+        format: int64
     type: object
   RepoUpdate:
     description: Fields which can be updated in a repository.

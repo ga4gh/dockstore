@@ -2,6 +2,7 @@ version: 1.2
 workflows:
   -  name: foobar
      subclass: wdl
+     publish: true
      primaryDescriptorPath: /Dockstore2.wdl
      testParameterFiles:
        - /dockstore.wdl.json
@@ -12,6 +13,7 @@ workflows:
          - gwas*
   -  name: foobar2
      subclass: cwl
+     publish: no
      primaryDescriptorPath: /Dockstore.cwl
      testParameterFiles:
        - /dockstore.cwl.json
@@ -28,6 +30,7 @@ service:
     The UCSC Xena browser is an exploration tool for public and private,
     multi-omic and clinical/phenotype data.
     It is recommended that you configure a reverse proxy to handle HTTPS
+  publish: True
   files:
     - docker-compose.yml
     - README.md

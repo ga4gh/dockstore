@@ -1,0 +1,111 @@
+# This is the non-confidential portion of the confidential dockstoreTest.yml
+# This file can/should be checked into Git
+# Ensure no overlapping properties between this and dockstoreTest.yml. The files are merged before testing.
+
+template: Hello, %s!
+
+gitHubAppPrivateKeyFile: /usr/local/ci/dstesting_pcks8.pem
+
+
+googleClientID: <fill me in>
+googleClientSecret: <fill me in>
+# port should match the port where the UI is being hosted, 4200 by default
+googleRedirectURI: <fill me in>
+
+esconfiguration:
+  port: 9200
+  hostname: localhost
+
+externalConfig:
+  basePath: /
+  hostname: localhost
+  scheme: http
+  port: 8080
+
+authenticationCachePolicy: maximumSize=10000, expireAfterAccess=0s
+
+database:
+  # the name of your JDBC driver
+  driverClass: org.postgresql.Driver
+
+  # the username
+  user: dockstore
+
+  # the password
+  password: dockstore
+
+  # the JDBC URL
+  url: jdbc:postgresql://localhost:5432/webservice_test
+
+  # any properties specific to your JDBC driver:
+  properties:
+    charSet: UTF-8
+    hibernate.dialect: org.hibernate.dialect.PostgreSQLDialect
+    # create database as needed, disable in production
+    hibernate.hbm2ddl.auto: validate
+    # suppress session log to reduce verbosity
+    hibernate.generate_statistics: false
+
+  # the maximum amount of time to wait on an empty pool before throwing an exception
+  maxWaitForConnection: 1s
+
+  # the SQL query to run when validating a connection's liveness
+  validationQuery: "/* MyApplication Health Check */ SELECT 1"
+
+  # the minimum number of connections to keep open
+  minSize: 8
+
+  # the maximum number of connections to keep open
+  maxSize: 32
+
+  # whether or not idle connections should be validated
+  checkConnectionWhileIdle: false
+
+  removeAbandoned: true
+  abandonWhenPercentageFull: 80
+  logAbandonedConnections: true
+  removeAbandonedTimeout: 5 minutes
+
+logging:
+  level: info
+  loggers:
+    "io.dropwizard": ERROR
+    "org.reflections": ERROR
+    "liquibase": ERROR
+  appenders:
+    - type: console
+
+authorizerType: inmemory
+
+uiConfig:
+  dnaStackImportUrl: https://app.dnastack.com/#/app/workflow/import/dockstore
+  dnaNexusImportUrl: https://platform.dnanexus.com/panx/tools/import-workflow
+  terraImportUrl: https://app.terra.bio/#import-tool/dockstore
+
+  gitHubAuthUrl: https://github.com/login/oauth/authorize
+  gitHubRedirectPath: /auth/github.com
+  gitHubScope: read:org,user:email
+
+  quayIoAuthUrl: https://quay.io/oauth/authorize
+  quayIoRedirectPath: /auth/quay.io
+  quayIoScope: repo:read,user:read
+
+  bitBucketAuthUrl: https://bitbucket.org/site/oauth2/authorize
+
+  gitlabAuthUrl: https://gitlab.com/oauth/authorize
+  gitlabRedirectPath: /auth/gitlab.com
+  gitlabScope: api
+
+  zenodoAuthUrl: https://sandbox.zenodo.org/oauth/authorize
+  zenodoRedirectPath: /auth/zenodo.org
+  zenodoScope: deposit:write deposit:actions
+
+  googleScope: profile email
+
+  cwlVisualizerUri: https://view.commonwl.org
+
+  gitHubAppInstallationUrl: https://github.com/apps/dockstore-testing-application
+
+  orcidAuthUrl: https://sandbox.orcid.org/oauth/authorize
+  orcidScope: /activities/update
+  orcidRedirectPath: /auth/orcid.org

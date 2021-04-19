@@ -23,6 +23,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -40,6 +41,7 @@ import io.dockstore.webservice.core.Workflow;
 import io.dockstore.webservice.core.WorkflowMode;
 import io.dockstore.webservice.core.WorkflowVersion;
 import io.openapi.api.impl.ToolsApiServiceImpl;
+import io.openapi.model.ImageData;
 import io.openapi.model.ToolFile;
 import io.swagger.model.DescriptorType;
 import io.swagger.model.FileWrapper;
@@ -131,7 +133,7 @@ public class ToolsImplCommonTest {
         tag.setReference("sampleReference");
         tag.setValid(true);
         List<Checksum> checksums = Collections.singletonList(new Checksum("SHA-1", "fakeChecksum"));
-        Set<Image> image = Collections.singleton(new Image(checksums, "sampleRepo", "sampleTag", "SampleImageId", Registry.QUAY_IO));
+        Set<Image> image = Collections.singleton(new Image(checksums, "sampleRepo", "sampleTag", "SampleImageId", Registry.QUAY_IO, null, null));
         tag.setImages(image);
         Tag hiddenTag = new Tag();
         hiddenTag.setImageId("hiddenImageId");
@@ -517,5 +519,33 @@ public class ToolsImplCommonTest {
         expectedToolTests.setContent(PLACEHOLDER_CONTENT);
         expectedToolTests.setUrl("/test.cwl.json");
         assertEquals(expectedToolTests, actualToolTests);
+    }
+
+    @Test
+    public void processImageDataForToolVersionTest() {
+        io.dockstore.webservice.core.Tool tool = new io.dockstore.webservice.core.Tool();
+        Tag tag = new Tag();
+        Image image = new Image(new ArrayList<>(), "dummy", "dummy", "a", Registry.QUAY_IO, 1L, "now");
+        Image image2 = new Image(new ArrayList<>(), "dummy", "dummy", "b", Registry.QUAY_IO, 2L, "now");
+        Set<Image> images = new HashSet<>();
+        images.add(image);
+        images.add(image2);
+        tag.setImages(images);
+        tool.addWorkflowVersion(tag);
+        io.openapi.model.ToolVersion toolVersion = new io.openapi.model.ToolVersion();
+        toolVersion.setImages(new ArrayList<>());
+        ToolsImplCommon.processImageDataForToolVersion(tool, tag, toolVersion);
+        Assert.assertEquals("There should be the same amount of images as the Tag", 2, toolVersion.getImages().size());
+        List<Long> sortedSizes = toolVersion.getImages().stream().map(ImageData::getSize).sorted().collect(Collectors.toList());
+        Assert.assertEquals(Long.valueOf(1L), sortedSizes.get(0));
+        Assert.assertEquals(Long.valueOf(2L), sortedSizes.get(1));
+        toolVersion = new io.openapi.model.ToolVersion();
+        tag.setImages(new HashSet<>());
+        tool = new io.dockstore.webservice.core.Tool();
+        tool.addWorkflowVersion(tag);
+        toolVersion.setImages(new ArrayList<>());
+        ToolsImplCommon.processImageDataForToolVersion(tool, tag, toolVersion);
+        Assert.assertEquals("There should be one default image when the Tag has none", 1, toolVersion.getImages().size());
+        Assert.assertEquals(Long.valueOf(0L), toolVersion.getImages().get(0).getSize());
     }
 }

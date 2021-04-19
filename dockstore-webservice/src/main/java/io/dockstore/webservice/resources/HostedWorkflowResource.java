@@ -142,7 +142,7 @@ public class HostedWorkflowResource extends AbstractHostedEntryResource<Workflow
 
     private void checkUserCanDoAction(User user, Entry entry, Role.Action action) {
         try {
-            checkUser(user, entry); // Checks if owner, which has all permissions.
+            checkUserOwnsEntry(user, entry); // Checks if owner, which has all permissions.
         } catch (CustomWebApplicationException ex) {
             if (!(entry instanceof Workflow) || !permissionsInterface.canDoAction(user, (Workflow)entry, action)) {
                 throw ex;

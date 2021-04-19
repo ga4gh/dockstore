@@ -25,6 +25,8 @@ import javax.persistence.JoinColumns;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
+import javax.persistence.NamedNativeQueries;
+import javax.persistence.NamedNativeQuery;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
 import javax.persistence.OneToMany;
@@ -36,6 +38,7 @@ import javax.validation.constraints.Size;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.databind.annotation.JsonSerialize;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -54,7 +57,16 @@ import org.hibernate.annotations.UpdateTimestamp;
 @NamedQueries({
         @NamedQuery(name = "io.dockstore.webservice.core.Collection.getByAlias", query = "SELECT e from Collection e JOIN e.aliases a WHERE KEY(a) IN :alias"),
         @NamedQuery(name = "io.dockstore.webservice.core.Collection.findAllByOrg", query = "SELECT col FROM Collection col WHERE organizationid = :organizationId"),
+        @NamedQuery(name = "io.dockstore.webservice.core.Collection.deleteByOrgId", query = "DELETE Collection c WHERE c.organization.id = :organizationId"),
+        @NamedQuery(name = "io.dockstore.webservice.core.Collection.findAllByOrgId", query = "SELECT c from Collection c WHERE c.organization.id = :organizationId"),
         @NamedQuery(name = "io.dockstore.webservice.core.Collection.findByNameAndOrg", query = "SELECT col FROM Collection col WHERE lower(col.name) = lower(:name) AND organizationid = :organizationId"),
+        @NamedQuery(name = "io.dockstore.webservice.core.Collection.findEntryVersionsByCollectionId", query = "SELECT entries FROM Collection c JOIN c.entries entries WHERE entries.id = :entryVersionId"),
+})
+
+@NamedNativeQueries({
+        // This is a native query since I couldn't figure out how to do a delete with a join in HQL
+        @NamedNativeQuery(name = "io.dockstore.webservice.core.Collection.deleteEntryVersionsByCollectionId", query =
+                "DELETE FROM collection_entry_version WHERE collection_id = :collectionId")
 })
 @SuppressWarnings("checkstyle:magicnumber")
 public class Collection implements Serializable, Aliasable {
@@ -86,6 +98,18 @@ public class Collection implements Serializable, Aliasable {
     @ApiModelProperty(value = "Short description of the collection", position = 4)
     @Schema(description = "Short description of the collection", required = true, example = "A collection of alignment algorithms")
     private String topic;
+
+    @Transient
+    @JsonSerialize
+    @ApiModelProperty(value = "Number of workflows inside this collection", position = 5)
+    @Schema(description = "Number of workflows inside this collection")
+    private long workflowsLength;
+
+    @Transient
+    @JsonSerialize
+    @ApiModelProperty(value = "Number of tools inside this collection", position = 6)
+    @Schema(description = "Number of tools inside this collection")
+    private long toolsLength;
 
     @OneToMany(cascade = CascadeType.ALL, orphanRemoval = true, fetch = FetchType.LAZY)
     @JoinColumns({
@@ -166,8 +190,8 @@ public class Collection implements Serializable, Aliasable {
         this.entries.add(new EntryVersion(entry, version));
     }
 
-    public void removeEntry(Entry entry, Long versionId) {
-        this.entries.removeIf(entryVersion -> entryVersion.getEntry().getId() == (entry.getId()) && ((entryVersion.getVersion() != null ? entryVersion.getVersion().getId() == versionId : null == versionId)));
+    public void removeEntry(Long entryId, Long versionId) {
+        this.entries.removeIf(entryVersion -> entryVersion.equals(entryId, versionId));
     }
 
     public Organization getOrganization() {
@@ -216,6 +240,22 @@ public class Collection implements Serializable, Aliasable {
 
     public void setDisplayName(String displayName) {
         this.displayName = displayName;
+    }
+
+    public void setWorkflowsLength(long pworkflowsLength) {
+        this.workflowsLength = pworkflowsLength;
+    }
+
+    public long getWorkflowsLength() {
+        return this.workflowsLength;
+    }
+
+    public void setToolsLength(long ptoolsLength) {
+        this.toolsLength = ptoolsLength;
+    }
+
+    public long getToolsLength() {
+        return this.toolsLength;
     }
 
     public long getOrganizationID() {

@@ -1,9 +1,8 @@
 extraction:
   java:
     before_index:
-      - wget -q https://github.com/mikefarah/yq/releases/download/3.3.2/yq_linux_amd64
-      - chmod a+x yq_linux_amd64
-      - mv yq_linux_amd64 yq
+      # lgtm does not seem to like mvnw
+      - rm -Rf .mvn/wrapper; rm mvnw
       - export PATH="/opt/src:$PATH"
       # lgtm does a maven build so needs git-secrets
       - wget --no-verbose -O git-secrets-1.3.0.tar.gz https://github.com/awslabs/git-secrets/archive/1.3.0.tar.gz

@@ -112,6 +112,19 @@ public interface AuthenticatedResourceInterface {
         }
     }
 
+    /**
+     * Check if entry belongs to user
+     *
+     * @param user the user that is requesting something
+     * @param entry entry to check permissions for
+     */
+    default void checkUserOwnsEntry(User user, Entry entry) {
+        if (entry.getUsers().stream().noneMatch(u -> ((User)(u)).getId() == user.getId())) {
+            throw new CustomWebApplicationException("Forbidden: you do not have the credentials required to access this entry.",
+                    HttpStatus.SC_FORBIDDEN);
+        }
+    }
+
     static boolean userCannotRead(User user, Entry entry) {
         return !user.getIsAdmin() && (entry.getUsers()).stream().noneMatch(u -> ((User)(u)).getId() == user.getId());
     }
@@ -136,7 +149,7 @@ public interface AuthenticatedResourceInterface {
      * @param entry entry to check permissions for()
      */
     default void checkUserCanUpdate(User user, Entry entry) {
-        checkUser(user, entry);
+        checkUserOwnsEntry(user, entry);
     }
 
     /**

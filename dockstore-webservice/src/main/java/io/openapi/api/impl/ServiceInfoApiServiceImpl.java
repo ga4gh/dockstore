@@ -14,6 +14,7 @@ import io.dockstore.webservice.core.User;
 import io.openapi.api.ServiceInfoApiService;
 import io.openapi.model.Service;
 import io.openapi.model.ServiceType;
+import io.openapi.model.TRSServiceOrganization;
 import io.swagger.api.impl.ToolsApiServiceImpl;
 
 import static io.dockstore.common.PipHelper.DEV_SEM_VER;
@@ -60,34 +61,11 @@ public class ServiceInfoApiServiceImpl extends ServiceInfoApiService {
         return serviceType;
     }
 
-    private static Organization getOrganization() {
-        Organization organization = new Organization();
+    private static TRSServiceOrganization getOrganization() {
+        TRSServiceOrganization organization = new TRSServiceOrganization();
         organization.setName("Dockstore");
         organization.setUrl("https://dockstore.org");
         return organization;
 
     }
-
-    // TODO: Figure out why Swagger codegen couldn't auto-generate an anonymous class (maybe it's just not possible?)
-    static class Organization {
-        String name;
-        String url;
-
-        public String getName() {
-            return name;
-        }
-
-        public void setName(String name) {
-            this.name = name;
-        }
-
-        public String getUrl() {
-            return url;
-        }
-
-        public void setUrl(String url) {
-            this.url = url;
-        }
-    }
-
 }

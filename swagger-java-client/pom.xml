@@ -22,7 +22,7 @@
     <name>swagger-java-client</name>
 
     <parent>
-        <version>1.10.0-alpha.3-SNAPSHOT</version>
+        <version>1.11.0-alpha.2-SNAPSHOT</version>
         <groupId>io.dockstore</groupId>
         <artifactId>dockstore</artifactId>
         <relativePath>../pom.xml</relativePath>
@@ -180,6 +180,10 @@
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 
@@ -251,7 +255,7 @@
             <!-- used just for ordering since this uses the swagger.json created by dockstore-webservice during the build -->
             <groupId>io.dockstore</groupId>
             <artifactId>dockstore-webservice</artifactId>
-            <version>1.10.0-alpha.3-SNAPSHOT</version>
+            <version>1.11.0-alpha.2-SNAPSHOT</version>
             <scope>provided</scope>
             <exclusions>
                 <exclusion>

@@ -23,11 +23,13 @@ import javax.ws.rs.core.MediaType;
 import com.codahale.metrics.annotation.Timed;
 import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.api.StarRequest;
+import io.dockstore.webservice.core.Collection;
 import io.dockstore.webservice.core.Event;
 import io.dockstore.webservice.core.Organization;
 import io.dockstore.webservice.core.OrganizationUser;
 import io.dockstore.webservice.core.User;
 import io.dockstore.webservice.helpers.PublicStateManager;
+import io.dockstore.webservice.jdbi.CollectionDAO;
 import io.dockstore.webservice.jdbi.EventDAO;
 import io.dockstore.webservice.jdbi.OrganizationDAO;
 import io.dockstore.webservice.jdbi.UserDAO;
@@ -49,6 +51,7 @@ import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.security.SecurityScheme;
 import io.swagger.v3.oas.annotations.security.SecuritySchemes;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.commons.validator.routines.EmailValidator;
@@ -83,11 +86,13 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
     private final UserDAO userDAO;
     private final EventDAO eventDAO;
     private final SessionFactory sessionFactory;
+    private final CollectionDAO collectionDAO;
 
     public OrganizationResource(SessionFactory sessionFactory) {
         this.organizationDAO = new OrganizationDAO(sessionFactory);
         this.userDAO = new UserDAO(sessionFactory);
         this.eventDAO = new EventDAO(sessionFactory);
+        this.collectionDAO = new CollectionDAO(sessionFactory);
         this.sessionFactory = sessionFactory;
     }
 
@@ -98,7 +103,10 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
     @Operation(operationId = "getApprovedOrganizations", summary = "List all available organizations.", description = "List all organizations that have been approved by a curator or admin, sorted by number of stars.")
     public List<Organization> getApprovedOrganizations() {
         List<Organization> organizations = organizationDAO.findApprovedSortedByStar();
-        organizations.stream().forEach(org -> Hibernate.initialize(org.getAliases()));
+        organizations.stream().forEach(org -> {
+            Hibernate.initialize(org.getAliases());
+            org.setCollectionsLength(org.getCollections().size());
+        });
         return organizations;
     }
 
@@ -246,6 +254,7 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         @ApiParam(value = "Organization ID.", required = true) @Parameter(description = "Organization ID.", name = "organizationId", in = ParameterIn.PATH, required = true) @PathParam("organizationId") Long id) {
         Organization organization = getOrganizationByIdOptionalAuth(user, id);
         Hibernate.initialize(organization.getAliases());
+        organization.setCollectionsLength(organization.getCollections().size());
         return organization;
     }
 
@@ -428,17 +437,22 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
             @Parameter(hidden = true, name = "user") @Auth User user,
             @Parameter(description = "Organization ID.", name = "organizationId", in = ParameterIn.PATH, required = true) @PathParam("organizationId") Long organizationId) {
         Organization organization = organizationDAO.findById(organizationId);
+        throwExceptionForNullOrganization(organization);
         OrganizationUser orgUser = getUserOrgRole(organization, user.getId());
 
-        // If the user does not belong to the organization or if the user is not a maintainer of the organization
+        // If the user does not belong to the organization or if the user is not an admin of the organization
         // and if the user is neither an admin nor curator, then throw an error
-        if ((orgUser == null || orgUser.getRole() != OrganizationUser.Role.MAINTAINER) && (!user.isCurator() && !user.getIsAdmin())) {
+        if ((orgUser == null || orgUser.getRole() != OrganizationUser.Role.ADMIN) && (!user.isCurator() && !user.getIsAdmin())) {
             throw new CustomWebApplicationException("You do not have access to delete this organization", HttpStatus.SC_FORBIDDEN);
         }
 
         // If the organization to be deleted is pending or has been rejected, then delete the organization
         if (organization.getStatus() == Organization.ApplicationState.PENDING || organization.getStatus() == Organization.ApplicationState.REJECTED) {
+            // To delete an org, you need to delete its associated events, entryversions, and collections (in this order) first.
             eventDAO.deleteEventByOrganizationID(organizationId);
+            List<Collection> collections = collectionDAO.findAllByOrg(organizationId);
+            collections.stream().forEach(collection -> collectionDAO.deleteEntryVersionByCollectionId(collection.getId()));
+            collectionDAO.deleteCollectionsByOrgId(organizationId);
             organizationDAO.delete(organization);
         } else { // else if the organization is not pending nor rejected, then throw an error
             throw new CustomWebApplicationException("You can only delete organizations that are pending or have been rejected", HttpStatus.SC_BAD_REQUEST);
@@ -496,12 +510,8 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
 
         // Validate email and link
-        if (organization.getEmail() != null) {
-            validateEmail(organization.getEmail());
-        }
-        if (organization.getLink() != null) {
-            validateLink(organization.getLink());
-        }
+        validateEmail(organization.getEmail());
+        validateLink(organization.getLink());
 
         // Save organization
         organization.setStatus(Organization.ApplicationState.PENDING); // should not be approved by default
@@ -526,6 +536,7 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
     @Timed
     @UnitOfWork
     @Path("{organizationId}")
+    @Consumes(MediaType.APPLICATION_JSON)
     @ApiOperation(value = "Update an organization.", notes = "Currently only name, display name, description, topic, email, link, avatarUrl, and location can be updated.", authorizations = { @Authorization(value = JWT_SECURITY_DEFINITION_NAME) }, response = Organization.class)
     @Operation(operationId = "updateOrganization", summary = "Update an organization.", description = "Update an organization. Currently only name, display name, description, topic, email, link, avatarUrl, and location can be updated.", security = @SecurityRequirement(name = "bearer"))
     public Organization updateOrganization(@ApiParam(hidden = true) @Parameter(hidden = true, name = "user") @Auth User user,
@@ -568,12 +579,8 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
 
         // Validate email and link
-        if (organization.getEmail() != null) {
-            validateEmail(organization.getEmail());
-        }
-        if (organization.getLink() != null) {
-            validateLink(organization.getLink());
-        }
+        validateEmail(organization.getEmail());
+        validateLink(organization.getLink());
 
         if (!oldOrganization.getName().equals(organization.getName()) || !oldOrganization.getDisplayName().equals(organization.getDisplayName())) {
             if (user.getIsAdmin() || user.isCurator() || oldOrganization.getStatus() != Organization.ApplicationState.APPROVED) {
@@ -601,7 +608,14 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         return organizationDAO.findById(id);
     }
 
+    /**
+     * Validate email string. null/empty is valid since it's optional.
+     * @param email The email to validate
+     */
     private void validateEmail(String email) {
+        if (StringUtils.isEmpty(email)) {
+            return;
+        }
         EmailValidator emailValidator = EmailValidator.getInstance();
         if (!emailValidator.isValid(email)) {
             String msg = "Email is invalid: " + email;
@@ -610,7 +624,14 @@ public class OrganizationResource implements AuthenticatedResourceInterface, Ali
         }
     }
 
+    /**
+     * Validate url string. null/empty is valid since it's optional.
+     * @param url The link to validate
+     */
     private void validateLink(String url) {
+        if (StringUtils.isEmpty(url)) {
+            return;
+        }
         String[] schemes = { "http", "https" };
         UrlValidator urlValidator = new UrlValidator(schemes);
         if (!urlValidator.isValid(url)) {

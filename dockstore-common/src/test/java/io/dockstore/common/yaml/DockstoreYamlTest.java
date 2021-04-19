@@ -33,6 +33,7 @@ import org.junit.contrib.java.lang.system.SystemOutRule;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertThrows;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
@@ -89,7 +90,9 @@ public class DockstoreYamlTest {
         if (!workflowFoobar.isPresent()) {
             fail("Could not find workflow foobar");
         }
-        final YamlWorkflow workflow = workflowFoobar.get();
+
+        YamlWorkflow workflow = workflowFoobar.get();
+        assertTrue(workflow.getPublish());
         assertEquals("wdl", workflow.getSubclass());
         assertEquals("/Dockstore2.wdl", workflow.getPrimaryDescriptorPath());
         final List<String> testParameterFiles = workflow.getTestParameterFiles();
@@ -102,8 +105,15 @@ public class DockstoreYamlTest {
         final List<String> tags = filters.getTags();
         assertEquals(1, tags.size());
         assertEquals("gwas*", tags.get(0));
+
+        workflow = workflows.get(1);
+        assertFalse(workflow.getPublish());
+        workflow = workflows.get(2);
+        assertNull(workflow.getPublish());
+
         final Service12 service = dockstoreYaml.getService();
         assertNotNull(service);
+        assertTrue(service.getPublish());
     }
 
     @Test
@@ -199,23 +209,22 @@ public class DockstoreYamlTest {
             DockstoreYamlHelper.readAsDockstoreYaml12(workflowsKey);
             Assert.fail("Shouldn't be able to parse correctly");
         } catch (DockstoreYamlHelper.DockstoreYamlException ex) {
-            assertTrue(ex.getMessage().contains("Unrecognized property \"workflow\""));
+            assertTrue(ex.getMessage().contains("must have at least 1 workflow or service"));
         }
 
         final String nameKey = DOCKSTORE_GALAXY_YAML.replaceFirst("name", "Name");
         try {
             DockstoreYamlHelper.readAsDockstoreYaml12(nameKey);
-            Assert.fail("Shouldn't be able to parse correctly");
         } catch (DockstoreYamlHelper.DockstoreYamlException ex) {
-            assertTrue(ex.getMessage().contains("Unrecognized property \"Name\""));
+            Assert.fail("'name' is not required and 'Name' should just be ignored.");
         }
 
-        final String multipleKeys = DOCKSTORE_GALAXY_YAML.replaceFirst("name", "Name").replaceFirst("workflows", "workflow");
+        final String multipleKeys = DOCKSTORE_GALAXY_YAML.replaceFirst("version", "Version").replaceFirst("workflows", "workflow");
         try {
             DockstoreYamlHelper.readAsDockstoreYaml12(multipleKeys);
             Assert.fail("Shouldn't be able to parse correctly");
         } catch (DockstoreYamlHelper.DockstoreYamlException ex) {
-            assertTrue("Should only return first error", ex.getMessage().contains("Unrecognized property \"workflow\""));
+            assertTrue("Should only return first error", ex.getMessage().contains("missing valid version"));
         }
     }
 

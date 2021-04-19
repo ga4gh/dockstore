@@ -22,7 +22,7 @@ public class DockerHubImage {
 
     private String features;
 
-    private String size;
+    private Long size;
 
     private String os;
 
@@ -34,6 +34,9 @@ public class DockerHubImage {
     private String variant;
 
     private String architecture;
+
+    @SerializedName("last_pushed")
+    private String lastPushed;
 
     public String getOsFeatures() {
         return osFeatures;
@@ -51,11 +54,11 @@ public class DockerHubImage {
         this.features = features;
     }
 
-    public String getSize() {
+    public Long getSize() {
         return size;
     }
 
-    public void setSize(String size) {
+    public void setSize(Long size) {
         this.size = size;
     }
 
@@ -99,5 +102,11 @@ public class DockerHubImage {
         this.architecture = architecture;
     }
 
+    public String getLastPushed() {
+        return lastPushed;
+    }
 
+    public void setLastPushed(String lastPushed) {
+        this.lastPushed = lastPushed;
+    }
 }

@@ -77,6 +77,14 @@ public class Image {
     @ApiModelProperty(value = "Stores the OS and, if available the OS version. Separated by a / and only applicable to Docker Hub", position = 7)
     private String os;
 
+    @Column()
+    @ApiModelProperty(value = "The size of the image in bytes")
+    private Long size;
+
+    @Column()
+    @ApiModelProperty(value = "The date the image was updated in the Docker repository")
+    private String imageUpdateDate;
+
     @Column(updatable = false)
     @CreationTimestamp
     private Timestamp dbCreateDate;
@@ -89,12 +97,14 @@ public class Image {
 
     }
 
-    public Image(List<Checksum> checksums, String repository, String tag, String imageID, Registry imageRegistry) {
+    public Image(List<Checksum> checksums, String repository, String tag, String imageID, Registry imageRegistry, Long size, String imageUpdateDate) {
         this.checksums = checksums;
         this.repository = repository;
         this.tag = tag;
         this.imageID = imageID;
         this.imageRegistry = imageRegistry;
+        this.size = size;
+        this.imageUpdateDate = imageUpdateDate;
     }
 
     public String getTag() {
@@ -153,4 +163,19 @@ public class Image {
         this.os = os;
     }
 
+    public Timestamp getDbUpdateDate() {
+        return dbUpdateDate;
+    }
+
+    public Long getSize() {
+        return size;
+    }
+
+    public void setSize(Long size) {
+        this.size = size;
+    }
+
+    public String getImageUpdateDate() {
+        return imageUpdateDate;
+    }
 }

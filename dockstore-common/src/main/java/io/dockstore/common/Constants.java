@@ -27,12 +27,6 @@ public final class Constants {
     public static final String WEBSERVICE_TOKEN_USER_1 = "webservice.tokenUser1"; // Dummy dockstore token for user 1
     public static final String WEBSERVICE_TOKEN_USER_2 = "webservice.tokenUser2"; // Dummy dockstore token for user 2
 
-    public static final String POSTGRES_HOST = "database.postgresHost";
-    public static final String POSTGRES_USERNAME = "database.postgresUser";
-    public static final String POSTGRES_PASSWORD = "database.postgresPass";
-    public static final String POSTGRES_DBNAME = "database.postgresDBName";
-    public static final String POSTGRES_MAX_CONNECTIONS = "database.maxConnections";
-
     private Constants() {
         // hide the default constructor for a constant class
     }

@@ -20,6 +20,9 @@ import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.OffsetDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Date;
@@ -236,15 +239,21 @@ public final class ToolsImplCommon {
         return tool;
     }
 
-    private static List<ImageData> processImageDataForWorkflowVersions(final Version version) {
+    private static List<ImageData> processImageDataForWorkflowVersions(final Version<?> version) {
         Set<Image> images = version.getImages();
         List<ImageData> trsImages = new ArrayList<>();
 
         for (Image image : images) {
             ImageData imageData = new ImageData();
             imageData.setImageType(ImageType.DOCKER);
+            if (image.getImageRegistry() == null) {
+                // avoid exception on null image registry
+                continue;
+            }
             imageData.setRegistryHost(image.getImageRegistry().getDockerPath());
             imageData.setImageName(constructName(Arrays.asList(image.getRepository(), image.getTag())));
+            imageData.setUpdated(image.getImageUpdateDate());
+            imageData.setSize(image.getSize());
             List<Checksum> trsChecksums = new ArrayList<>();
             List<io.dockstore.webservice.core.Checksum> checksumList = image.getChecksums();
 
@@ -266,33 +275,51 @@ public final class ToolsImplCommon {
      * @param version tag for Dockstore tool
      * @param toolVersion toolVersion to return in TRS
      */
-    private static void processImageDataForToolVersion(io.dockstore.webservice.core.Tool castedContainer, Tag version,
+    public static void processImageDataForToolVersion(io.dockstore.webservice.core.Tool castedContainer, Tag version,
         ToolVersion toolVersion) {
-        ImageData data = new ImageData();
         List<Checksum> trsChecksums = new ArrayList<>();
-        if (version.getImages() != null) {
+        if (version.getImages() != null && !version.getImages().isEmpty()) {
             version.getImages().forEach(image -> {
+                ImageData data = new ImageData();
                 image.getChecksums().forEach(checksum -> {
                     Checksum trsChecksum = new Checksum();
                     trsChecksum.setType(DOCKER_IMAGE_SHA_TYPE_FOR_TRS);
                     trsChecksum.setChecksum(checksum.getChecksum());
                     trsChecksums.add(trsChecksum);
                 });
+                //TODO: for now, all container images are Docker based
+                data.setImageType(ImageType.DOCKER);
+                data.setSize(image.getSize());
+                data.setUpdated(image.getImageUpdateDate());
+                data.setImageName(constructName(Arrays.asList(castedContainer.getRegistry(), castedContainer.getNamespace(), castedContainer.getName())));
+                data.setRegistryHost(castedContainer.getRegistry());
+                data.setChecksum(trsChecksums);
+                toolVersion.getImages().add(data);
             });
-            data.setChecksum(trsChecksums);
         } else {
-            //tools without images?
-            data.setChecksum(MoreObjects.firstNonNull(data.getChecksum(), Lists.newArrayList()));
+            toolVersion.getImages().add(createDummyImageData(castedContainer));
         }
+    }
+
+    /**
+     * This is a workaround used when the version.getImages() has nothing in it
+     * @param castedContainer
+     * @return
+     */
+    private static ImageData createDummyImageData(io.dockstore.webservice.core.Tool castedContainer) {
+        ImageData data = new ImageData();
         //TODO: for now, all container images are Docker based
         data.setImageType(ImageType.DOCKER);
-        //TODO: hook up proper size
-        data.setSize(0);
-        //TODO: hook up proper date
-        data.setUpdated(new Date().toString());
+        // Not a proper size because we don't have that information stored in version.getImages()
+        data.setSize(0L);
+        // Not a proper date because we don't have that information stored in version.getImages()
+        OffsetDateTime now = OffsetDateTime.now().truncatedTo(ChronoUnit.SECONDS);
+        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        data.setUpdated(formatter.format(now));
         data.setImageName(constructName(Arrays.asList(castedContainer.getRegistry(), castedContainer.getNamespace(), castedContainer.getName())));
         data.setRegistryHost(castedContainer.getRegistry());
-        toolVersion.getImages().add(data);
+        data.setChecksum(Lists.newArrayList());
+        return data;
     }
 
     /**

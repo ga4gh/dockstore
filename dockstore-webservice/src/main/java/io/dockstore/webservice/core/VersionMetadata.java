@@ -89,6 +89,10 @@ public class VersionMetadata {
     )
     protected List<ParsedInformation> parsedInformationSet = new ArrayList<>();
 
+    @Column
+    @ApiModelProperty(value = "The presence of the put code indicates the version was exported to ORCID.")
+    protected String orcidPutCode;
+
     @Id
     @Column(name = "id")
     private long id;
@@ -113,5 +117,13 @@ public class VersionMetadata {
         if (parsedInformationSet != null) {
             this.parsedInformationSet.addAll(parsedInformationSet);
         }
+    }
+
+    public String getOrcidPutCode() {
+        return orcidPutCode;
+    }
+
+    public void setOrcidPutCode(String orcidPutCode) {
+        this.orcidPutCode = orcidPutCode;
     }
 }

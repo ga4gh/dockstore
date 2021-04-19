@@ -1,0 +1,141 @@
+<?xml version="1.1" encoding="UTF-8" standalone="no"?>
+<!--
+  ~    Copyright 2020 OICR
+  ~
+  ~    Licensed under the Apache License, Version 2.0 (the "License");
+  ~    you may not use this file except in compliance with the License.
+  ~    You may obtain a copy of the License at
+  ~
+  ~        http://www.apache.org/licenses/LICENSE-2.0
+  ~
+  ~    Unless required by applicable law or agreed to in writing, software
+  ~    distributed under the License is distributed on an "AS IS" BASIS,
+  ~    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  ~    See the License for the specific language governing permissions and
+  ~    limitations under the License.
+  -->
+
+<databaseChangeLog xmlns="http://www.liquibase.org/xml/ns/dbchangelog" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                   xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.5.xsd"
+                   context="1.11.0">
+    <changeSet author="gluu (generated)" id="addImageSizeAndUpdateDate">
+        <addColumn tableName="image">
+            <column name="imageupdatedate" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <addColumn tableName="image">
+            <column name="size" type="int8"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="nzhao (generated)" id="toolForumUrl">
+        <addColumn tableName="tool">
+            <column name="forumurl" type="varchar(256 BYTE)"/>
+        </addColumn>
+    </changeSet>
+    <changeSet author="natalieperez (generated)" id="deletedUsernameTable">
+        <createTable tableName="deletedusername">
+            <column autoIncrement="true" name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" primaryKeyName="deletedusername_pkey"/>
+            </column>
+            <column name="dbcreatedate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="dbupdatedate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="username" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+    </changeSet>
+    <changeSet author="gluu (generated)" id="cloudInstanceAndLanguageTables">
+        <createTable tableName="cloud_instance">
+            <column autoIncrement="true" name="id" type="BIGSERIAL">
+                <constraints primaryKey="true" primaryKeyName="cloud_instance_pkey"/>
+            </column>
+            <column name="partner" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="supports_file_imports" type="BOOLEAN"/>
+            <column name="supports_http_imports" type="BOOLEAN"/>
+            <column name="url" type="VARCHAR(255)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="BIGINT"/>
+        </createTable>
+        <createTable tableName="cloudinstance_supportedlanguages">
+            <column name="cloudinstance_id" type="BIGINT">
+                <constraints primaryKey="true" primaryKeyName="cloudinstance_supportedlanguages_pkey"/>
+            </column>
+            <column name="language" type="VARCHAR(50)">
+                <constraints primaryKey="true" primaryKeyName="cloudinstance_supportedlanguages_pkey"/>
+            </column>
+            <column name="version" type="VARCHAR(50)"/>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="cloudinstance_id" baseTableName="cloudinstance_supportedlanguages" constraintName="fk_cloudinstance_supportedlanguages" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="cloud_instance"/>
+        <addForeignKeyConstraint baseColumnNames="user_id" baseTableName="cloud_instance" constraintName="fk_end_user_cloud_instance" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="enduser"/>
+    </changeSet>
+    <changeSet author="gluu (generated)" id="orcidPutCode">
+        <addColumn tableName="version_metadata">
+            <column name="orcidputcode" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <addColumn tableName="service">
+            <column name="orcidputcode" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <addColumn tableName="tool">
+            <column name="orcidputcode" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <addColumn tableName="workflow">
+            <column name="orcidputcode" type="varchar(255 BYTE)"/>
+        </addColumn>
+    </changeSet>
+
+    <changeSet author="natalieperez (generated)" id="input_output_fileformats_on_entry">
+        <createTable tableName="entry_output_fileformat">
+            <column name="entryid" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="entry_output_fileformat_pkey"/>
+            </column>
+            <column name="fileformatid" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="entry_output_fileformat_pkey"/>
+            </column>
+        </createTable>
+        <createTable tableName="entry_input_fileformat">
+            <column name="entryid" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="entry_input_fileformat_pkey"/>
+            </column>
+            <column name="fileformatid" type="BIGINT">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="entry_input_fileformat_pkey"/>
+            </column>
+        </createTable>
+        <addForeignKeyConstraint baseColumnNames="fileformatid" baseTableName="entry_output_fileformat" constraintName="fk_entry_ouput_fileformat" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="fileformat"/>
+        <addForeignKeyConstraint baseColumnNames="fileformatid" baseTableName="entry_input_fileformat" constraintName="fk_entry_input_fileformat" deferrable="false" initiallyDeferred="false" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="fileformat"/>
+        <sql dbms="postgresql">
+            INSERT INTO entry_input_fileformat(entryid, fileformatid)
+            SELECT DISTINCT workflow.id as entryid, version_input_fileformat.fileformatid as fileformatid FROM version_input_fileformat, workflow, workflowversion
+            WHERE workflow.id = workflowversion.parentid
+            AND workflowversion.id = version_input_fileformat.versionid;
+
+            INSERT INTO entry_input_fileformat(entryid, fileformatid)
+            SELECT DISTINCT tool.id as entryid, version_input_fileformat.fileformatid as fileformatid FROM version_input_fileformat, tool, tag
+            WHERE tool.id = tag.parentid
+            AND tag.id = version_input_fileformat.versionid;
+
+            INSERT INTO entry_output_fileformat(entryid, fileformatid)
+            SELECT DISTINCT workflow.id as entryid, version_output_fileformat.fileformatid as fileformatid FROM version_output_fileformat, workflow, workflowversion
+            WHERE workflow.id = workflowversion.parentid
+            AND workflowversion.id = version_output_fileformat.versionid;
+
+            INSERT INTO entry_output_fileformat(entryid, fileformatid)
+            SELECT DISTINCT tool.id as entryid, version_output_fileformat.fileformatid as fileformatid FROM version_output_fileformat, tool, tag
+            WHERE tool.id = tag.parentid
+            AND tag.id = version_output_fileformat.versionid;
+        </sql>
+    </changeSet>
+    <changeSet author="gluu (generated)" id="orcidTokenExpansion">
+        <addColumn tableName="token">
+            <column name="expirationtime" type="int8"/>
+        </addColumn>
+        <addColumn tableName="token">
+            <column name="scope" type="varchar(255 BYTE)"/>
+        </addColumn>
+        <update tableName="token">
+            <column name="scope" value="/authenticate"/>
+            <where>tokensource = 'orcid.org'</where>
+        </update>
+    </changeSet>
+</databaseChangeLog>

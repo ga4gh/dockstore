@@ -19,6 +19,7 @@ package io.dockstore.webservice.jdbi;
 import java.lang.reflect.ParameterizedType;
 import java.math.BigInteger;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -36,6 +37,7 @@ import com.google.common.base.Strings;
 import io.dockstore.webservice.core.CollectionEntry;
 import io.dockstore.webservice.core.CollectionOrganization;
 import io.dockstore.webservice.core.Entry;
+import io.dockstore.webservice.core.Label;
 import io.dockstore.webservice.core.Tool;
 import io.dockstore.webservice.core.Version;
 import io.dockstore.webservice.core.Workflow;
@@ -165,12 +167,20 @@ public abstract class EntryDAO<T extends Entry> extends AbstractDockstoreDAO<T> 
         return list(this.currentSession().getNamedQuery("Entry.getCollectionWorkflows").setParameter("collectionId", collectionId));
     }
 
+    public long getWorkflowsLength(long collectionId) {
+        return (long)(this.currentSession().getNamedQuery("Entry.getWorkflowsLength").setParameter("collectionId", collectionId).getSingleResult());
+    }
+
     public List<CollectionEntry> getCollectionServices(long collectionId) {
         return list(this.currentSession().getNamedQuery("Entry.getCollectionServices").setParameter("collectionId", collectionId));
     }
 
     public List<CollectionEntry> getCollectionTools(long collectionId) {
         return list(this.currentSession().getNamedQuery("Entry.getCollectionTools").setParameter("collectionId", collectionId));
+    }
+
+    public long getToolsLength(long collectionId) {
+        return (long)(this.currentSession().getNamedQuery("Entry.getToolsLength").setParameter("collectionId", collectionId).getSingleResult());
     }
 
     public List<CollectionEntry> getCollectionWorkflowsWithVersions(long collectionId) {
@@ -227,6 +237,19 @@ public abstract class EntryDAO<T extends Entry> extends AbstractDockstoreDAO<T> 
 
     private long countAllPublished() {
         return (long)this.currentSession().getNamedQuery("io.dockstore.webservice.core." + typeOfT.getSimpleName() + ".countAllPublished").getSingleResult();
+    }
+
+    public List<Label> getLabelByEntryId(long entryId) {
+        return list(this.currentSession().getNamedQuery("io.dockstore.webservice.core.Entry.findLabelByEntryId").setParameter("entryId", entryId));
+    }
+
+    public List<String> getToolsDescriptorTypes(long entryId) {
+        return (List<String>)this.currentSession().getNamedQuery("Entry.findToolsDescriptorTypes").setParameter("entryId", entryId)
+                .getSingleResult();
+    }
+
+    public List<String> getWorkflowsDescriptorTypes(long entryId) {
+        return Arrays.asList(this.currentSession().getNamedQuery("Entry.findWorkflowsDescriptorTypes").setParameter("entryId", entryId).getSingleResult().toString());
     }
 
     private void processQuery(String filter, String sortCol, String sortOrder, CriteriaBuilder cb, CriteriaQuery query, Root<T> entry) {

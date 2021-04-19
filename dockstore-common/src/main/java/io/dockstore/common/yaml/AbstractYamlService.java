@@ -37,6 +37,11 @@ public abstract class AbstractYamlService {
      */
     private String description;
     /**
+     * Change the service's publish-state, if set.
+     * null does nothing; True & False correspond with the current API behaviour of publishing & unpublishing.
+     */
+    private Boolean publish;
+    /**
      * A list of files that Dockstore should index
      */
     private List<String> files;
@@ -79,6 +84,14 @@ public abstract class AbstractYamlService {
 
     public void setDescription(final String description) {
         this.description = description;
+    }
+
+    public Boolean getPublish() {
+        return publish;
+    }
+
+    public void setPublish(final Boolean publish) {
+        this.publish = publish;
     }
 
     public List<String> getFiles() {

@@ -15,17 +15,11 @@
  */
 package io.dockstore.consumer.handler;
 
-import java.io.File;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Objects;
 import java.util.Optional;
 
 import com.google.common.collect.Lists;
-import com.spotify.docker.client.DefaultDockerClient;
-import com.spotify.docker.client.DockerClient;
-import com.spotify.docker.client.exceptions.DockerCertificateException;
-import com.spotify.docker.client.exceptions.DockerException;
 import io.dockstore.common.model.DOIMessage;
 import io.dockstore.zenodo.client.ApiClient;
 import io.dockstore.zenodo.client.ApiException;
@@ -43,7 +37,6 @@ import io.swagger.client.model.DockstoreTool;
 import io.swagger.client.model.Tag;
 import io.swagger.client.model.Workflow;
 import io.swagger.client.model.WorkflowVersion;
-import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -88,20 +81,7 @@ public class DOIHandler implements MessageHandler<DOIMessage> {
                 return true;
             }
 
-            // Pull an image
-            // Create a client based on DOCKER_HOST and DOCKER_CERT_PATH env vars
-            String image = publishedContainer.getPath() + ":" + tag.getName();
-            File dockerImageFile = new File(image);
-            try (DockerClient docker = DefaultDockerClient.fromEnv().build()) {
-                docker.pull(image);
-                FileUtils.copyInputStreamToFile(docker.save(image), dockerImageFile);
-            } catch (DockerException | DockerCertificateException | InterruptedException e) {
-                LOG.error("could not pull Docker image:" + image, e);
-                return false;
-            } catch (IOException e) {
-                LOG.error("could not save Docker image to file:" + dockerImageFile.getAbsolutePath(), e);
-                return false;
-            }
+            // Someday a prototype could pull Docker images here
 
             // send documents to zenodo
             ApiClient zenodoClient = new ApiClient();

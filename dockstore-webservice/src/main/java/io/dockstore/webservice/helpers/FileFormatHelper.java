@@ -13,6 +13,7 @@ import java.util.stream.Collectors;
 import javax.xml.bind.DatatypeConverter;
 
 import io.dockstore.common.DescriptorLanguage;
+import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.FileFormat;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Version;
@@ -32,12 +33,16 @@ public final class FileFormatHelper {
 
     /**
      * Updates the given tool/workflow to show which file formats are associated with its sourcefiles
+     * @param entry The tool or workflow to update
      * @param versions  A tool/workflow's versions (tags/workflowVersions)
      * @param fileFormatDAO  The FileFormatDAO to check the FileFormat table
+     * @param updateAllVersions If updating all versions, then this will clear the entry's input/output formats and reset them. Otherwise it will only add the file formats
      */
-    public static void updateFileFormats(Set<? extends Version> versions, final FileFormatDAO fileFormatDAO) {
+    public static void updateFileFormats(Entry entry, Set<? extends Version> versions, final FileFormatDAO fileFormatDAO, boolean updateAllVersions) {
+        SortedSet<FileFormat> entrysInputFileFormats = new TreeSet<>();
+        SortedSet<FileFormat> entrysOutputFileFormats = new TreeSet<>();
         CWLHandler cwlHandler = new CWLHandler();
-        versions.forEach(tag -> {
+        versions.stream().filter(tag -> !((Version)tag).isFrozen()).forEach(tag -> {
             SortedSet<FileFormat> inputFileFormats = new TreeSet<>();
             SortedSet<FileFormat> outputFileFormats = new TreeSet<>();
             SortedSet<SourceFile> sourceFiles = tag.getSourceFiles();
@@ -51,7 +56,30 @@ public final class FileFormatHelper {
             SortedSet<FileFormat> realOutputFileFormats = getFileFormatsFromDatabase(fileFormatDAO, outputFileFormats);
             tag.setInputFileFormats(realInputFileFormats);
             tag.setOutputFileFormats(realOutputFileFormats);
+
+            entrysInputFileFormats.addAll(realInputFileFormats);
+            entrysOutputFileFormats.addAll(realOutputFileFormats);
         });
+
+        if (updateAllVersions) {
+            entry.getInputFileFormats().clear();
+            entry.getOutputFileFormats().clear();
+        }
+        entry.getInputFileFormats().addAll(entrysInputFileFormats);
+        entry.getOutputFileFormats().addAll(entrysOutputFileFormats);
+    }
+
+    public static void updateEntryLevelFileFormats(Entry entry) {
+        SortedSet<FileFormat> entrysInputFileFormats = new TreeSet<>();
+        SortedSet<FileFormat> entrysOutputFileFormats = new TreeSet<>();
+        entry.getWorkflowVersions().stream().forEach(version -> {
+            entrysInputFileFormats.addAll(((Version)version).getInputFileFormats());
+            entrysOutputFileFormats.addAll(((Version)version).getOutputFileFormats());
+        });
+        entry.getInputFileFormats().clear();
+        entry.getInputFileFormats().addAll(entrysInputFileFormats);
+        entry.getOutputFileFormats().clear();
+        entry.getOutputFileFormats().addAll(entrysOutputFileFormats);
     }
 
     /**

@@ -1,9 +1,15 @@
-To cite Dockstore in a publication please refer to 
+To cite the Dockstore project as a whole please refer to 
 
-https://zenodo.org/record/3628791
+O'Connor BD, Yuen D, Chung V et al. The Dockstore: enabling modular, community-focused sharing of Docker-based genomics tools and workflows [version 1; peer review: 2 approved]. F1000Research 2017, 6:52 (https://doi.org/10.12688/f1000research.10137.1) 
+
+To cite the Dockstore source code, please refer to:
+
+
+https://doi.org/10.5281/zenodo.4289328
+
 
 {
-  "description": "Highlighted new features include:\n<ul>\n<li>New launch-with partners<ul>\n<li>AnVIL</li>\n</ul>\n</li>\n<li>Redesigned logged-in homepage displays more information for returning users including <ul>\n<li>News and updates</li>\n<li>Featured content such as new organizations and workflows</li>\n<li>Recently modified tools, workflows and orgs</li>\n</ul>\n</li>\n<li>Notification system for news such as TOS updates, pending system updates</li>\n<li>Security updates</li>\n<li>Performance improvements</li>\n<li>Usability improvements</li>\n<li>Can source workflow descriptions from README.md if not present in workflow itself</li>\n<li>DOI landing pages hosted at Zenodo will now link to exact versions of workflows</li>\n<li>Preview feature</li>\n<li>Services are now reachable from many parts of the UI</li>\n<li>Behind the scenes work on CI/CD, infrastructure improvements, more frequent releases</li>\n<li>Also some behind the scenes work leading up to the implementation of the final v2 GA4GH TRS standard</li>\n</ul>\n<p>As always, see our full list of changes on <a href=\"https://github.com/dockstore/dockstore/milestone/28\">GitHub </a></p>\nBreaking changes\nMajor\n<p>None intended</p>\nMinor\n<ul>\n<li>If upgrading the Dockstore CLI, our Dockstore script has changed and should be downloaded anew from the onboarding wizard</li>\n</ul>", 
+  "description": "Highlighted new features include\n<ul>\n<li>GitHub app support for filters to allow for more control over which tags and branches are automatically reported to Dockstore, more details <a href=\"https://docs.dockstore.org/en/develop/getting-started/github-apps/github-apps.html?highlight=filters\">here</a></li>\n<li>can select a specific version of a workflow or tool when adding then to a collection (\"I vouch for specifically version X of workflow Y\")</li>\n<li>cwltool updates from 1.0.20190621234233 to 3.0.20200807132242</li>\n<li>GitHub apps patches for more reliable processing of automatic updates</li>\n<li>performance improvements for large repositories with lots of branches and tags</li>\n<li>performance improvments for GA4GH TRS implementation</li>\n<li>a start to a more consistent visual experience for the site</li>\n<li>Behind the scenes<ul>\n<li>a large number of deployment and architectural changes to facilitate better security and regulatory compliance</li>\n<li>updates to elastic search and angular</li>\n</ul>\n</li>\n<li>a huge host of bugfixes for everything from WDL parsing, UI display issues, editing of hosted workflows, and command-line interface fixes \nSee a full list of our changes on <a href=\"https://github.com/dockstore/dockstore/milestone/37\">GitHub</a></li>\n</ul>\nBreaking changes\nMajor\n<ul>\n<li>none known (or intended anyway)</li>\n</ul>\nMinor\n<ul>\n<li>none</li>\n</ul>", 
   "license": "", 
   "creator": [
     {
@@ -34,13 +40,26 @@ https://zenodo.org/record/3628791
       "name": "Charles Overbeck"
     }, 
     {
+      "@type": "Person", 
+      "name": "NatalieEO"
+    }, 
+    {
       "affiliation": "UCSC Genomics Institute", 
       "@type": "Person", 
       "name": "Walter Shands"
     }, 
     {
+      "affiliation": "Ontario Institute for Cancer Research", 
       "@type": "Person", 
-      "name": "NatalieEO"
+      "name": "Gregory F J Hogue"
+    }, 
+    {
+      "@type": "Person", 
+      "name": "Emily Soth"
+    }, 
+    {
+      "@type": "Person", 
+      "name": "Louise Cabansay"
     }, 
     {
       "@type": "Person", 
@@ -48,7 +67,11 @@ https://zenodo.org/record/3628791
     }, 
     {
       "@type": "Person", 
-      "name": "Louise Cabansay"
+      "name": "Andy Chen"
+    }, 
+    {
+      "@type": "Person", 
+      "name": "David Steinberg"
     }, 
     {
       "affiliation": "@CuriiHQ @arvados", 
@@ -57,11 +80,11 @@ https://zenodo.org/record/3628791
     }, 
     {
       "@type": "Person", 
-      "name": "Emily Soth"
+      "name": "Kitty Cao"
     }, 
     {
       "@type": "Person", 
-      "name": "David Steinberg"
+      "name": "Kathy Tran"
     }, 
     {
       "@type": "Person", 
@@ -69,22 +92,20 @@ https://zenodo.org/record/3628791
     }, 
     {
       "@type": "Person", 
-      "name": "Kitty Cao"
+      "name": "nrzhao4"
     }, 
     {
-      "affiliation": "Gitter", 
       "@type": "Person", 
-      "name": "The Gitter Badger"
+      "name": "Noah Warren"
     }, 
     {
-      "affiliation": "@Snyk", 
+      "affiliation": "UCSC Genomics Institute", 
       "@type": "Person", 
-      "name": "Snyk bot"
+      "name": "Chaz Reid"
     }, 
     {
-      "affiliation": "Codacy", 
       "@type": "Person", 
-      "name": "Codacy Badger"
+      "name": "Abraham"
     }, 
     {
       "affiliation": "University of California, Davis", 
@@ -92,17 +113,41 @@ https://zenodo.org/record/3628791
       "name": "C. Titus Brown"
     }, 
     {
+      "affiliation": "Codacy", 
       "@type": "Person", 
-      "name": "Abraham"
+      "name": "Codacy Badger"
+    }, 
+    {
+      "@type": "Person", 
+      "name": "dockstore-admin"
+    }, 
+    {
+      "affiliation": "@Gradle", 
+      "@type": "Person", 
+      "name": "Jonathan Leitschuh"
+    }, 
+    {
+      "@type": "Person", 
+      "name": "Richard-Hansen"
+    }, 
+    {
+      "affiliation": "@Snyk", 
+      "@type": "Person", 
+      "name": "Snyk bot"
+    }, 
+    {
+      "affiliation": "Gitter", 
+      "@type": "Person", 
+      "name": "The Gitter Badger"
     }
   ], 
-  "url": "https://zenodo.org/record/3628791", 
-  "codeRepository": "https://github.com/dockstore/dockstore/tree/1.8.0", 
-  "datePublished": "2020-01-27", 
-  "version": "1.8.0", 
+  "url": "https://zenodo.org/record/4289328", 
+  "codeRepository": "https://github.com/dockstore/dockstore/tree/1.10.0", 
+  "datePublished": "2020-11-24", 
+  "version": "1.10.0", 
   "@context": "https://schema.org/", 
-  "identifier": "https://doi.org/10.5281/zenodo.3628791", 
-  "@id": "https://doi.org/10.5281/zenodo.3628791", 
+  "identifier": "https://doi.org/10.5281/zenodo.4289328", 
+  "@id": "https://doi.org/10.5281/zenodo.4289328", 
   "@type": "SoftwareSourceCode", 
-  "name": "dockstore/dockstore: 1.8.0"
+  "name": "dockstore/dockstore: 1.10.0"
 }

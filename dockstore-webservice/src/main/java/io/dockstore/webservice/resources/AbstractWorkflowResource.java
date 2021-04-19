@@ -2,14 +2,18 @@ package io.dockstore.webservice.resources;
 
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import com.google.common.collect.Sets;
@@ -38,10 +42,13 @@ import io.dockstore.webservice.helpers.FileFormatHelper;
 import io.dockstore.webservice.helpers.GitHelper;
 import io.dockstore.webservice.helpers.GitHubHelper;
 import io.dockstore.webservice.helpers.GitHubSourceCodeRepo;
+import io.dockstore.webservice.helpers.PublicStateManager;
 import io.dockstore.webservice.helpers.SourceCodeRepoFactory;
 import io.dockstore.webservice.helpers.SourceCodeRepoInterface;
+import io.dockstore.webservice.helpers.StateManagerMode;
 import io.dockstore.webservice.jdbi.EventDAO;
 import io.dockstore.webservice.jdbi.FileDAO;
+import io.dockstore.webservice.jdbi.FileFormatDAO;
 import io.dockstore.webservice.jdbi.LambdaEventDAO;
 import io.dockstore.webservice.jdbi.TokenDAO;
 import io.dockstore.webservice.jdbi.UserDAO;
@@ -51,6 +58,7 @@ import io.swagger.annotations.Api;
 import org.apache.http.HttpStatus;
 import org.apache.http.client.HttpClient;
 import org.hibernate.SessionFactory;
+import org.kohsuke.github.GHRateLimit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -79,20 +87,23 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
     protected final WorkflowDAO workflowDAO;
     protected final UserDAO userDAO;
     protected final WorkflowVersionDAO workflowVersionDAO;
+    protected final EntryResource entryResource;
     protected final EventDAO eventDAO;
     protected final FileDAO fileDAO;
     protected final LambdaEventDAO lambdaEventDAO;
+    protected final FileFormatDAO fileFormatDAO;
     protected final String gitHubPrivateKeyFile;
     protected final String gitHubAppId;
     protected final SessionFactory sessionFactory;
 
     protected final String bitbucketClientSecret;
     protected final String bitbucketClientID;
-    private final Class<T> entityClass;
 
-    public AbstractWorkflowResource(HttpClient client, SessionFactory sessionFactory, DockstoreWebserviceConfiguration configuration, Class<T> clazz) {
+    public AbstractWorkflowResource(HttpClient client, SessionFactory sessionFactory, EntryResource entryResource,
+            DockstoreWebserviceConfiguration configuration) {
         this.client = client;
         this.sessionFactory = sessionFactory;
+        this.entryResource = entryResource;
 
         this.tokenDAO = new TokenDAO(sessionFactory);
         this.workflowDAO = new WorkflowDAO(sessionFactory);
@@ -101,36 +112,23 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
         this.workflowVersionDAO = new WorkflowVersionDAO(sessionFactory);
         this.eventDAO = new EventDAO(sessionFactory);
         this.lambdaEventDAO = new LambdaEventDAO(sessionFactory);
+        this.fileFormatDAO = new FileFormatDAO(sessionFactory);
         this.bitbucketClientID = configuration.getBitbucketClientID();
         this.bitbucketClientSecret = configuration.getBitbucketClientSecret();
         gitHubPrivateKeyFile = configuration.getGitHubAppPrivateKeyFile();
         gitHubAppId = configuration.getGitHubAppId();
 
-        this.entityClass = clazz;
-    }
-
-    /**
-     * Finds all workflows from a general Dockstore path that are of type FULL
-     * @param dockstoreWorkflowPath Dockstore path (ex. github.com/dockstore/dockstore-ui2)
-     * @return List of FULL workflows with the given Dockstore path
-     */
-    protected List<Workflow> findAllWorkflowsByPath(String dockstoreWorkflowPath, WorkflowMode workflowMode) {
-        return workflowDAO.findAllByPath(dockstoreWorkflowPath, false)
-                .stream()
-                .filter(workflow ->
-                        workflow.getMode() == workflowMode)
-                .collect(Collectors.toList());
     }
 
     protected SourceCodeRepoInterface getSourceCodeRepoInterface(String gitUrl, User user) {
         List<Token> tokens = getAndRefreshTokens(user, tokenDAO, client, bitbucketClientID, bitbucketClientSecret);
 
         final String bitbucketTokenContent = getToken(tokens, TokenType.BITBUCKET_ORG);
-        final String gitHubTokenContent = getToken(tokens, TokenType.GITHUB_COM);
+        Token gitHubToken = Token.extractToken(tokens, TokenType.GITHUB_COM);
         final String gitlabTokenContent = getToken(tokens, TokenType.GITLAB_COM);
 
         final SourceCodeRepoInterface sourceCodeRepo = SourceCodeRepoFactory
-            .createSourceCodeRepo(gitUrl, client, bitbucketTokenContent, gitlabTokenContent, gitHubTokenContent);
+            .createSourceCodeRepo(gitUrl, bitbucketTokenContent, gitlabTokenContent, gitHubToken);
         if (sourceCodeRepo == null) {
             throw new CustomWebApplicationException("Git tokens invalid, please re-link your git accounts.", HttpStatus.SC_BAD_REQUEST);
         }
@@ -194,7 +192,6 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
                     workflowVersionFromDB.setToolTableJson(null);
                     workflowVersionFromDB.setDagJson(null);
 
-                    // Update sourcefiles
                     updateDBVersionSourceFilesWithRemoteVersionSourceFiles(workflowVersionFromDB, version);
                 });
     }
@@ -297,8 +294,11 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             }
         });
 
-        // Delete all non-frozen versions that have the same git reference name
-        workflows.forEach(workflow -> workflow.getWorkflowVersions().removeIf(workflowVersion -> Objects.equals(workflowVersion.getName(), gitReferenceName.get()) && !workflowVersion.isFrozen()));
+        // Delete all non-frozen versions that have the same git reference name and then update the file formats of the entry.
+        workflows.forEach(workflow -> {
+            workflow.getWorkflowVersions().removeIf(workflowVersion -> Objects.equals(workflowVersion.getName(), gitReferenceName.get()) && !workflowVersion.isFrozen());
+            FileFormatHelper.updateEntryLevelFileFormats(workflow);
+        });
         LambdaEvent lambdaEvent = createBasicEvent(repository, gitReference, username, LambdaEvent.LambdaEventType.DELETE);
         lambdaEventDAO.create(lambdaEvent);
         return workflows;
@@ -314,31 +314,31 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
      * @param installationId GitHub App installation ID
      * @return List of new and updated workflows
      */
-    protected List<Workflow> githubWebhookRelease(String repository, String username, String gitReference, String installationId) {
+    protected void githubWebhookRelease(String repository, String username, String gitReference, String installationId) {
         // Retrieve the user who triggered the call (must exist on Dockstore if workflow is not already present)
         User user = GitHubHelper.findUserByGitHubUsername(this.tokenDAO, this.userDAO, username, false);
-
-        // Get Installation Access Token
-        String installationAccessToken = gitHubAppSetup(installationId);
-
         // Grab Dockstore YML from GitHub
-        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createGitHubAppRepo(installationAccessToken);
+        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createGitHubAppRepo(gitHubAppSetup(installationId));
 
+        GHRateLimit startRateLimit = gitHubSourceCodeRepo.getGhRateLimitQuietly();
+        GHRateLimit endRateLimit;
+        boolean isSuccessful = false;
         try {
+
             SourceFile dockstoreYml = gitHubSourceCodeRepo.getDockstoreYml(repository, gitReference);
             // If this method doesn't throw an exception, it's a valid .dockstore.yml with at least one workflow or service.
             // It also converts a .dockstore.yml 1.1 file to a 1.2 object, if necessary.
             final DockstoreYaml12 dockstoreYaml12 = DockstoreYamlHelper.readAsDockstoreYaml12(dockstoreYml.getContent());
-            final List<Workflow> workflows = new ArrayList();
-            workflows.addAll(createServicesAndVersionsFromDockstoreYml(dockstoreYaml12.getService(), repository, gitReference,
-                    gitHubSourceCodeRepo, user, dockstoreYml));
-            workflows.addAll(createBioWorkflowsAndVersionsFromDockstoreYml(dockstoreYaml12.getWorkflows(), repository, gitReference,
-                    gitHubSourceCodeRepo, user, dockstoreYml));
-
+            createServicesAndVersionsFromDockstoreYml(dockstoreYaml12.getService(), repository, gitReference, installationId, user, dockstoreYml);
+            createBioWorkflowsAndVersionsFromDockstoreYml(dockstoreYaml12.getWorkflows(), repository, gitReference, installationId, user, dockstoreYml);
             LambdaEvent lambdaEvent = createBasicEvent(repository, gitReference, username, LambdaEvent.LambdaEventType.PUSH);
             lambdaEventDAO.create(lambdaEvent);
-            return workflows;
+            endRateLimit = gitHubSourceCodeRepo.getGhRateLimitQuietly();
+            isSuccessful = true;
+            gitHubSourceCodeRepo.reportOnGitHubRelease(startRateLimit, endRateLimit, repository, username, gitReference, isSuccessful);
         } catch (CustomWebApplicationException | ClassCastException | DockstoreYamlHelper.DockstoreYamlException | UnsupportedOperationException ex) {
+            endRateLimit = gitHubSourceCodeRepo.getGhRateLimitQuietly();
+            gitHubSourceCodeRepo.reportOnGitHubRelease(startRateLimit, endRateLimit, repository, username, gitReference, isSuccessful);
             String errorMessage = ex instanceof CustomWebApplicationException ? ((CustomWebApplicationException)ex).getErrorMessage() : ex.getMessage();
             String msg = "User " + username + ": Error handling push event for repository " + repository + " and reference " + gitReference + "\n" + errorMessage;
             LOG.info(msg, ex);
@@ -348,8 +348,10 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             lambdaEvent.setMessage(errorMessage);
             lambdaEventDAO.create(lambdaEvent);
             sessionFactory.getCurrentSession().getTransaction().commit();
-            throw new CustomWebApplicationException(msg, LAMBDA_FAILURE);
+            throw new CustomWebApplicationException(msg, statusCodeForLambda(ex));
         } catch (Exception ex) {
+            endRateLimit = gitHubSourceCodeRepo.getGhRateLimitQuietly();
+            gitHubSourceCodeRepo.reportOnGitHubRelease(startRateLimit, endRateLimit, repository, username, gitReference, isSuccessful);
             String msg = "User " + username + ": Unhandled error while handling push event for repository " + repository + " and reference " + gitReference + "\n" + ex.getMessage();
             LOG.error(msg, ex);
             sessionFactory.getCurrentSession().clear();
@@ -360,6 +362,31 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             sessionFactory.getCurrentSession().getTransaction().commit();
             throw new CustomWebApplicationException(msg, LAMBDA_FAILURE);
         }
+    }
+
+    /**
+     * Determines whether to signal lambda to try again
+     * @param ex
+     * @return
+     */
+    private int statusCodeForLambda(Exception ex) {
+        if (isGitHubRateLimitError(ex)) {
+            // 5xx tells lambda to retry. Lambda is configured to wait an hour for the retry; retries shouldn't immediately cause even more strain on rate limits.
+            LOG.info("GitHub rate limit hit, signaling lambda to retry.");
+            return HttpStatus.SC_INTERNAL_SERVER_ERROR;
+        }
+        return LAMBDA_FAILURE;
+    }
+
+    private boolean isGitHubRateLimitError(Exception ex) {
+        if (ex instanceof CustomWebApplicationException) {
+            final CustomWebApplicationException customWebAppEx = (CustomWebApplicationException)ex;
+            final String errorMessage = customWebAppEx.getErrorMessage();
+            if (errorMessage != null && errorMessage.startsWith(GitHubSourceCodeRepo.OUT_OF_GIT_HUB_RATE_LIMIT)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -390,13 +417,14 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
      * ONLY WORKS FOR v1.2
      * @param repository Repository path (ex. dockstore/dockstore-ui2)
      * @param gitReference Git reference from GitHub (ex. refs/tags/1.0)
-     * @param gitHubSourceCodeRepo Source Code Repo
+     * @param installationId Installation id needed to setup GitHub apps
      * @param user User that triggered action
      * @param dockstoreYml
      * @return List of new and updated workflows
      */
-    private List<Workflow> createBioWorkflowsAndVersionsFromDockstoreYml(List<YamlWorkflow> yamlWorkflows, String repository, String gitReference, GitHubSourceCodeRepo gitHubSourceCodeRepo, User user,
+    private List<Workflow> createBioWorkflowsAndVersionsFromDockstoreYml(List<YamlWorkflow> yamlWorkflows, String repository, String gitReference, String installationId, User user,
             final SourceFile dockstoreYml) {
+        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createGitHubAppRepo(gitHubAppSetup(installationId));
         try {
             List<Workflow> updatedWorkflows = new ArrayList<>();
             final Path gitRefPath = Path.of(gitReference);
@@ -407,9 +435,23 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
 
                 String subclass = wf.getSubclass();
                 String workflowName = wf.getName();
+                Boolean publish = wf.getPublish();
 
                 Workflow workflow = createOrGetWorkflow(BioWorkflow.class, repository, user, workflowName, subclass, gitHubSourceCodeRepo);
                 workflow = addDockstoreYmlVersionToWorkflow(repository, gitReference, dockstoreYml, gitHubSourceCodeRepo, workflow);
+
+                if (publish != null && workflow.getIsPublished() != publish) {
+                    LambdaEvent lambdaEvent = createBasicEvent(repository, gitReference, user.getUsername(), LambdaEvent.LambdaEventType.PUBLISH);
+                    try {
+                        workflow = publishWorkflow(workflow, publish);
+                    } catch (CustomWebApplicationException ex) {
+                        LOG.warn("Could not set publish state from YML.", ex);
+                        lambdaEvent.setSuccess(false);
+                        lambdaEvent.setMessage(ex.getMessage());
+                    }
+                    lambdaEventDAO.create(lambdaEvent);
+                }
+
                 updatedWorkflows.add(workflow);
             }
             return updatedWorkflows;
@@ -423,21 +465,37 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
      * ONLY WORKS FOR v1.1
      * @param repository Repository path (ex. dockstore/dockstore-ui2)
      * @param gitReference Git reference from GitHub (ex. refs/tags/1.0)
-     * @param gitHubSourceCodeRepo Source Code Repo
+     * @param installationId installation id needed to set up GitHub Apps
      * @param user User that triggered action
      * @param dockstoreYml
      * @return List of new and updated services
      */
-    private List<Workflow> createServicesAndVersionsFromDockstoreYml(Service12 service, String repository, String gitReference,
-            GitHubSourceCodeRepo gitHubSourceCodeRepo, User user, final SourceFile dockstoreYml) {
+    private List<Workflow> createServicesAndVersionsFromDockstoreYml(Service12 service, String repository, String gitReference, String installationId,
+            User user, final SourceFile dockstoreYml) {
+        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createGitHubAppRepo(gitHubAppSetup(installationId));
         final List<Workflow> updatedServices = new ArrayList<>();
         if (service != null) {
             if (!DockstoreYamlHelper.filterGitReference(Path.of(gitReference), service.getFilters())) {
                 return updatedServices;
             }
             final DescriptorLanguageSubclass subclass = service.getSubclass();
+            final Boolean publish = service.getPublish();
+
             Workflow workflow = createOrGetWorkflow(Service.class, repository, user, "", subclass.getShortName(), gitHubSourceCodeRepo);
             workflow = addDockstoreYmlVersionToWorkflow(repository, gitReference, dockstoreYml, gitHubSourceCodeRepo, workflow);
+
+            if (publish != null && workflow.getIsPublished() != publish) {
+                LambdaEvent lambdaEvent = createBasicEvent(repository, gitReference, user.getUsername(), LambdaEvent.LambdaEventType.PUBLISH);
+                try {
+                    workflow = publishWorkflow(workflow, publish);
+                } catch (CustomWebApplicationException ex) {
+                    LOG.warn("Could not set publish state from YML.", ex);
+                    lambdaEvent.setSuccess(false);
+                    lambdaEvent.setMessage(ex.getMessage());
+                }
+                lambdaEventDAO.create(lambdaEvent);
+            }
+
             updatedServices.add(workflow);
         }
         return updatedServices;
@@ -503,6 +561,7 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
      */
     private Workflow addDockstoreYmlVersionToWorkflow(String repository, String gitReference, SourceFile dockstoreYml,
             GitHubSourceCodeRepo gitHubSourceCodeRepo, Workflow workflow) {
+        Instant startTime = Instant.now();
         try {
             // Create version and pull relevant files
             WorkflowVersion remoteWorkflowVersion = gitHubSourceCodeRepo
@@ -510,34 +569,43 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             remoteWorkflowVersion.setReferenceType(getReferenceTypeFromGitRef(gitReference));
 
             // So we have workflowversion which is the new version, we want to update the version and associated source files
-            Optional<WorkflowVersion> existingWorkflowVersion = workflow.getWorkflowVersions().stream().filter(wv -> wv.equals(remoteWorkflowVersion)).findFirst();
-
+            WorkflowVersion existingWorkflowVersion = workflowVersionDAO.getWorkflowVersionByWorkflowIdAndVersionName(workflow.getId(), remoteWorkflowVersion.getName());
             // Update existing source files, add new source files, remove deleted sourcefiles, clear json for dag and tool table
-            if (existingWorkflowVersion.isPresent()) {
+            if (existingWorkflowVersion != null) {
                 // Copy over workflow version level information
-                existingWorkflowVersion.get().setWorkflowPath(remoteWorkflowVersion.getWorkflowPath());
-                existingWorkflowVersion.get().setLastModified(remoteWorkflowVersion.getLastModified());
-                existingWorkflowVersion.get().setLegacyVersion(remoteWorkflowVersion.isLegacyVersion());
-                existingWorkflowVersion.get().setAliases(remoteWorkflowVersion.getAliases());
-                existingWorkflowVersion.get().setSubClass(remoteWorkflowVersion.getSubClass());
-                existingWorkflowVersion.get().setCommitID(remoteWorkflowVersion.getCommitID());
-                existingWorkflowVersion.get().setDagJson(null);
-                existingWorkflowVersion.get().setToolTableJson(null);
-                existingWorkflowVersion.get().setReferenceType(remoteWorkflowVersion.getReferenceType());
-
-                updateDBVersionSourceFilesWithRemoteVersionSourceFiles(existingWorkflowVersion.get(), remoteWorkflowVersion);
+                existingWorkflowVersion.setWorkflowPath(remoteWorkflowVersion.getWorkflowPath());
+                existingWorkflowVersion.setLastModified(remoteWorkflowVersion.getLastModified());
+                existingWorkflowVersion.setLegacyVersion(remoteWorkflowVersion.isLegacyVersion());
+                existingWorkflowVersion.setAliases(remoteWorkflowVersion.getAliases());
+                existingWorkflowVersion.setSubClass(remoteWorkflowVersion.getSubClass());
+                existingWorkflowVersion.setCommitID(remoteWorkflowVersion.getCommitID());
+                existingWorkflowVersion.setDagJson(null);
+                existingWorkflowVersion.setToolTableJson(null);
+                existingWorkflowVersion.setReferenceType(remoteWorkflowVersion.getReferenceType());
+                existingWorkflowVersion.setValid(remoteWorkflowVersion.isValid());
+                updateDBVersionSourceFilesWithRemoteVersionSourceFiles(existingWorkflowVersion, remoteWorkflowVersion);
             } else {
                 workflow.addWorkflowVersion(remoteWorkflowVersion);
             }
 
-            Optional<WorkflowVersion> addedVersion = workflow.getWorkflowVersions().stream().filter(workflowVersion -> Objects.equals(workflowVersion.getName(), remoteWorkflowVersion.getName())).findFirst();
-            addedVersion.ifPresent(workflowVersion -> gitHubSourceCodeRepo
-                    .updateVersionMetadata(workflowVersion.getWorkflowPath(), workflowVersion, workflow.getDescriptorType(), repository));
+            WorkflowVersion addedVersion = workflowVersionDAO.getWorkflowVersionByWorkflowIdAndVersionName(workflow.getId(), remoteWorkflowVersion.getName());
+            if (addedVersion != null) {
+                gitHubSourceCodeRepo.updateVersionMetadata(addedVersion.getWorkflowPath(), addedVersion, workflow.getDescriptorType(), repository);
+
+                // Update file formats for the version and then the entry.
+                // TODO: We were not adding file formats to .dockstore.yml versions before, so this only handles new/updated versions. Need to add a way to update all .dockstore.yml versions in a workflow
+                Set<WorkflowVersion> workflowVersions = new HashSet<>();
+                workflowVersions.add(addedVersion);
+                FileFormatHelper.updateFileFormats(workflow, workflowVersions, fileFormatDAO, false);
+            }
 
             LOG.info("Version " + remoteWorkflowVersion.getName() + " has been added to workflow " + workflow.getWorkflowPath() + ".");
         } catch (IOException ex) {
             throw new CustomWebApplicationException("Cannot retrieve the workflow reference from GitHub, ensure that " + gitReference + " is a valid tag.", LAMBDA_FAILURE);
         }
+        Instant endTime = Instant.now();
+        long timeElasped = Duration.between(startTime, endTime).toSeconds();
+        LOG.info("Processing .dockstore.yml workflow version " + gitReference + " for repo: " + repository + " took " + timeElasped + " seconds");
         return workflow;
     }
 
@@ -577,7 +645,7 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
      * @param gitHubToken
      */
     private void syncEntities(User user, Token gitHubToken) {
-        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(gitHubToken, client);
+        GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(gitHubToken);
 
         // Get all GitHub repositories for the user
         final Map<String, String> workflowGitUrl2Name = gitHubSourceCodeRepo.getWorkflowGitUrl2RepositoryId();
@@ -641,5 +709,61 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             throw new CustomWebApplicationException(msg, HttpStatus.SC_INTERNAL_SERVER_ERROR);
         }
         return installationAccessToken;
+    }
+
+    /**
+     * Publish or unpublish given workflow, if necessary.
+     * @param workflow
+     * @param publish
+     * @return
+     */
+    protected Workflow publishWorkflow(Workflow workflow, final boolean publish) {
+        if (workflow.getIsPublished() == publish) {
+            return workflow;
+        }
+
+        Workflow checker = workflow.getCheckerWorkflow();
+
+        if (workflow.isIsChecker()) {
+            String msg = "Cannot directly publish/unpublish a checker workflow.";
+            LOG.error(msg);
+            throw new CustomWebApplicationException(msg, HttpStatus.SC_BAD_REQUEST);
+        }
+
+        if (publish) {
+            boolean validTag = false;
+            Set<WorkflowVersion> versions = workflow.getWorkflowVersions();
+            for (WorkflowVersion workflowVersion : versions) {
+                if (workflowVersion.isValid()) {
+                    validTag = true;
+                    break;
+                }
+            }
+
+            if (validTag && (!workflow.getGitUrl().isEmpty() || Objects.equals(workflow.getMode(), WorkflowMode.HOSTED))) {
+                workflow.setIsPublished(true);
+                if (checker != null) {
+                    checker.setIsPublished(true);
+                }
+            } else {
+                throw new CustomWebApplicationException("Repository does not meet requirements to publish.", HttpStatus.SC_BAD_REQUEST);
+            }
+
+            PublicStateManager.getInstance().handleIndexUpdate(workflow, StateManagerMode.PUBLISH);
+            if (workflow.getTopicId() == null) {
+                try {
+                    entryResource.createAndSetDiscourseTopic(workflow.getId());
+                } catch (CustomWebApplicationException ex) {
+                    LOG.error("Error adding discourse topic.", ex);
+                }
+            }
+        } else {
+            workflow.setIsPublished(false);
+            if (checker != null) {
+                checker.setIsPublished(false);
+            }
+            PublicStateManager.getInstance().handleIndexUpdate(workflow, StateManagerMode.DELETE);
+        }
+        return workflow;
     }
 }

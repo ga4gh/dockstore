@@ -119,7 +119,7 @@ public class ExtendedTRSIT extends BaseIT {
 
             // refresh and publish the workflow
             final Workflow workflow = workflowApi.refresh(workflowByPathGithub.getId(), false);
-            workflowApi.publish(workflow.getId(), SwaggerUtility.createPublishRequest(true));
+            workflowApi.publish(workflow.getId(), CommonTestUtilities.createPublishRequest(true));
         }
 
         // create verification data as the verifyingUser
@@ -152,7 +152,7 @@ public class ExtendedTRSIT extends BaseIT {
             Ga4GhApi api = new Ga4GhApi(verifyingUser);
             Tool tool = api.toolsIdGet(id);
             Assert.assertTrue("verification states do not seem to flow up",
-                tool.isVerified() && tool.getVersions().stream().allMatch(ToolVersion::isVerified));
+                tool.isVerified() && tool.getVersions().stream().anyMatch(ToolVersion::isVerified));
         }
         {
             ExtendedGa4GhApi extendedGa4GhApi = new ExtendedGa4GhApi(registeringUser);
@@ -207,7 +207,7 @@ public class ExtendedTRSIT extends BaseIT {
         registeredTool = toolApi.refresh(registeredTool.getId());
 
         // Make publish request (true)
-        final PublishRequest publishRequest = SwaggerUtility.createPublishRequest(true);
+        final PublishRequest publishRequest = CommonTestUtilities.createPublishRequest(true);
         toolApi.publish(registeredTool.getId(), publishRequest);
 
         // check on URLs for workflows via ga4gh calls

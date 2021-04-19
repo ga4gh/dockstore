@@ -17,6 +17,7 @@
 package io.dockstore.client.cli;
 
 import io.dockstore.common.CommonTestUtilities;
+import io.dockstore.common.TestingPostgres;
 import io.dockstore.webservice.DockstoreWebserviceApplication;
 import io.dockstore.webservice.DockstoreWebserviceConfiguration;
 import io.dropwizard.testing.DropwizardTestSupport;
@@ -31,8 +32,6 @@ import org.junit.rules.TestRule;
 import org.junit.rules.TestWatcher;
 import org.junit.runner.Description;
 
-import static io.dockstore.client.cli.BaseIT.testingPostgres;
-
 /**
  * Testing migration
  *
@@ -42,6 +41,7 @@ public class MigrationIT {
 
     public static final DropwizardTestSupport<DockstoreWebserviceConfiguration> SUPPORT = new DropwizardTestSupport<>(
         DockstoreWebserviceApplication.class, CommonTestUtilities.CONFIDENTIAL_CONFIG_PATH);
+    protected static TestingPostgres testingPostgres;
     @Rule
     public final ExpectedSystemExit systemExit = ExpectedSystemExit.none();
     @Rule
@@ -55,10 +55,12 @@ public class MigrationIT {
     public static void dumpDBAndCreateSchema() throws Exception {
         CommonTestUtilities.dropAndRecreateNoTestData(SUPPORT);
         SUPPORT.before();
+        testingPostgres = new TestingPostgres(SUPPORT);
     }
 
     @AfterClass
     public static void afterClass() {
+        SUPPORT.getEnvironment().healthChecks().shutdown();
         SUPPORT.after();
     }
 

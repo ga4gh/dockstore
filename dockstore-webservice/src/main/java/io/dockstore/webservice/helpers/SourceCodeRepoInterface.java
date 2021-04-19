@@ -41,6 +41,7 @@ import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.DescriptionSource;
 import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.Service;
+import io.dockstore.webservice.core.SourceControlOrganization;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Tag;
 import io.dockstore.webservice.core.Tool;
@@ -68,6 +69,7 @@ import static io.dockstore.webservice.Constants.SKIP_COMMIT_ID;
 public abstract class SourceCodeRepoInterface {
     public static final Logger LOG = LoggerFactory.getLogger(SourceCodeRepoInterface.class);
     public static final int BYTES_IN_KB = 1024;
+    @Deprecated
     String gitUsername;
 
     /**
@@ -728,4 +730,10 @@ public abstract class SourceCodeRepoInterface {
         return version.getValidations().stream().filter(validation -> !Objects.equals(validation.getType(),
                 DescriptorLanguage.FileType.DOCKSTORE_YML)).allMatch(Validation::isValid);
     }
+
+    /**
+     * Gets organizations for the current user
+     * @return
+     */
+    public abstract List<SourceControlOrganization> getOrganizations();
 }

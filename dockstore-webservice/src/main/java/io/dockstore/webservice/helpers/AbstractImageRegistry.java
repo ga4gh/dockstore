@@ -21,7 +21,6 @@ import java.lang.reflect.Type;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -67,7 +66,6 @@ import io.dockstore.webservice.jdbi.UserDAO;
 import io.dockstore.webservice.languages.LanguageHandlerFactory;
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpStatus;
-import org.apache.http.client.HttpClient;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -143,7 +141,6 @@ public abstract class AbstractImageRegistry {
      * @param toolDAO           ...
      * @param tagDAO            ...
      * @param fileDAO           ...
-     * @param client            An HttpClient used by source code repositories
      * @param githubToken       The user's GitHub token
      * @param bitbucketToken    The user's Bitbucket token
      * @param gitlabToken       The user's GitLab token
@@ -153,7 +150,7 @@ public abstract class AbstractImageRegistry {
      */
     @SuppressWarnings("checkstyle:parameternumber")
     public List<Tool> refreshTools(final long userId, final UserDAO userDAO, final ToolDAO toolDAO, final TagDAO tagDAO,
-            final FileDAO fileDAO, final FileFormatDAO fileFormatDAO, final HttpClient client, final Token githubToken, final Token bitbucketToken, final Token gitlabToken,
+            final FileDAO fileDAO, final FileFormatDAO fileFormatDAO, final Token githubToken, final Token bitbucketToken, final Token gitlabToken,
             String organization, final EventDAO eventDAO, final String dashboardPrefix) {
         // Get all the namespaces for the given registry
         List<String> namespaces;
@@ -194,8 +191,8 @@ public abstract class AbstractImageRegistry {
 
             List<Tag> toolTags = getTags(tool);
             final SourceCodeRepoInterface sourceCodeRepo = SourceCodeRepoFactory
-                .createSourceCodeRepo(tool.getGitUrl(), client, bitbucketToken == null ? null : bitbucketToken.getContent(),
-                    gitlabToken == null ? null : gitlabToken.getContent(), githubToken == null ? null : githubToken.getContent());
+                .createSourceCodeRepo(tool.getGitUrl(), bitbucketToken == null ? null : bitbucketToken.getContent(),
+                    gitlabToken == null ? null : gitlabToken.getContent(), githubToken);
             updateTags(toolTags, tool, sourceCodeRepo, tagDAO, fileDAO, toolDAO, fileFormatDAO, eventDAO, user);
         }
 
@@ -203,9 +200,8 @@ public abstract class AbstractImageRegistry {
     }
 
     @SuppressWarnings("checkstyle:ParameterNumber")
-    public List<Tool> refreshTool(final long userId, final UserDAO userDAO, final ToolDAO toolDAO, final TagDAO tagDAO,
-            final FileDAO fileDAO, final FileFormatDAO fileFormatDAO, final HttpClient client, final Token githubToken, final Token bitbucketToken, final Token gitlabToken,
-            String organization, final EventDAO eventDAO, final String dashboardPrefix, String repository) {
+    public void refreshTool(final long userId, final UserDAO userDAO, final ToolDAO toolDAO, final TagDAO tagDAO, final FileDAO fileDAO,
+            final FileFormatDAO fileFormatDAO, final Token githubToken, final Token bitbucketToken, final Token gitlabToken, String organization, final EventDAO eventDAO, final String dashboardPrefix, String repository) {
 
         // Get all the tools based on the found namespaces
         List<Tool> apiTools;
@@ -241,12 +237,10 @@ public abstract class AbstractImageRegistry {
 
             List<Tag> toolTags = getTags(tool);
             final SourceCodeRepoInterface sourceCodeRepo = SourceCodeRepoFactory
-                .createSourceCodeRepo(tool.getGitUrl(), client, bitbucketToken == null ? null : bitbucketToken.getContent(),
-                    gitlabToken == null ? null : gitlabToken.getContent(), githubToken.getContent());
+                .createSourceCodeRepo(tool.getGitUrl(), bitbucketToken == null ? null : bitbucketToken.getContent(),
+                    gitlabToken == null ? null : gitlabToken.getContent(), githubToken);
             updateTags(toolTags, tool, sourceCodeRepo, tagDAO, fileDAO, toolDAO, fileFormatDAO, eventDAO, user);
         }
-
-        return newDBTools;
     }
 
     /**
@@ -386,20 +380,20 @@ public abstract class AbstractImageRegistry {
             }
 
             dockerHubTag = gson.fromJson(manifestJSON, DockerHubTag.class);
-            List<Results> results = Arrays.asList(dockerHubTag.getResults());
+            Results[] results = dockerHubTag.getResults();
 
             try {
                 for (Results r : results) {
                     final Tag tag = new Tag();
                     tag.setName(r.getName());
 
-                    List<DockerHubImage> dockerHubImages = Arrays.asList(r.getImages());
+                    DockerHubImage[] dockerHubImages = r.getImages();
                     List<Checksum> checksums = new ArrayList<>();
                     // For every version, DockerHub can provide multiple images, one for each architecture
                     for (DockerHubImage i : dockerHubImages) {
                         final String manifestDigest = i.getDigest();
                         checksums.add(new Checksum(manifestDigest.split(":")[0], manifestDigest.split(":")[1]));
-                        Image image = new Image(checksums, repo, tag.getName(), r.getImageID(), Registry.DOCKER_HUB);
+                        Image image = new Image(checksums, repo, tag.getName(), r.getImageID(), Registry.DOCKER_HUB, i.getSize(), i.getLastPushed());
                         image.setArchitecture(i.getArchitecture());
                         tag.getImages().add(image);
                     }
@@ -420,9 +414,12 @@ public abstract class AbstractImageRegistry {
 
     private Optional<String> getDockerHubToolAsString(Tool tool) {
         final String repo = tool.getNamespace() + '/' + tool.getName();
+        return getDockerHubToolAsString(repo);
+    }
+
+    public static Optional<String> getDockerHubToolAsString(String repo) {
         final String repoUrl = DOCKERHUB_URL + "repositories/" + repo + "/tags";
         Optional<String> response;
-
         try {
             URL url = new URL(repoUrl);
             response = Optional.of(IOUtils.toString(url, StandardCharsets.UTF_8));
@@ -587,7 +584,7 @@ public abstract class AbstractImageRegistry {
             }
 
         }
-        FileFormatHelper.updateFileFormats(tool.getWorkflowVersions(), fileFormatDAO);
+        FileFormatHelper.updateFileFormats(tool, tool.getWorkflowVersions(), fileFormatDAO, true);
         // ensure updated tags are saved to the database, not sure why this is necessary. See GeneralIT#testImageIDUpdateDuringRefresh
         tool.getWorkflowVersions().forEach(tagDAO::create);
         toolDAO.create(tool);
@@ -666,7 +663,7 @@ public abstract class AbstractImageRegistry {
                                 List<Checksum> checksums = new ArrayList<>();
 
                                 checksums.add(new Checksum(manifestDigest.split(":")[0], manifestDigest.split(":")[1]));
-                                tag.getImages().add(new Image(checksums, tool.getNamespace() + '/' + tool.getName(), tag.getName(), null, Registry.GITLAB));
+                                tag.getImages().add(new Image(checksums, tool.getNamespace() + '/' + tool.getName(), tag.getName(), null, Registry.GITLAB, gitLabTag.getTotalSize(), gitLabTag.getCreatedAt()));
                                 tags.add(tag);
                             }
                         }

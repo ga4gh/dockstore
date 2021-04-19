@@ -40,8 +40,10 @@ import io.dockstore.language.MinimalLanguageInterface;
 import io.dockstore.language.RecommendedLanguageInterface;
 import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.Checksum;
+import io.dockstore.webservice.core.CloudInstance;
 import io.dockstore.webservice.core.Collection;
 import io.dockstore.webservice.core.CollectionOrganization;
+import io.dockstore.webservice.core.DeletedUsername;
 import io.dockstore.webservice.core.EntryVersion;
 import io.dockstore.webservice.core.Event;
 import io.dockstore.webservice.core.FileFormat;
@@ -64,14 +66,15 @@ import io.dockstore.webservice.core.Workflow;
 import io.dockstore.webservice.core.WorkflowVersion;
 import io.dockstore.webservice.doi.DOIGeneratorFactory;
 import io.dockstore.webservice.helpers.CacheConfigManager;
+import io.dockstore.webservice.helpers.ElasticSearchHelper;
 import io.dockstore.webservice.helpers.GoogleAnalyticsHelper;
 import io.dockstore.webservice.helpers.GoogleHelper;
 import io.dockstore.webservice.helpers.MetadataResourceHelper;
-import io.dockstore.webservice.helpers.ObsoleteUrlFactory;
 import io.dockstore.webservice.helpers.PersistenceExceptionMapper;
 import io.dockstore.webservice.helpers.PublicStateManager;
 import io.dockstore.webservice.helpers.TransactionExceptionMapper;
 import io.dockstore.webservice.helpers.statelisteners.TRSListener;
+import io.dockstore.webservice.jdbi.DeletedUsernameDAO;
 import io.dockstore.webservice.jdbi.EventDAO;
 import io.dockstore.webservice.jdbi.FileDAO;
 import io.dockstore.webservice.jdbi.TagDAO;
@@ -83,7 +86,9 @@ import io.dockstore.webservice.jdbi.WorkflowDAO;
 import io.dockstore.webservice.languages.LanguageHandlerFactory;
 import io.dockstore.webservice.permissions.PermissionsFactory;
 import io.dockstore.webservice.permissions.PermissionsInterface;
+import io.dockstore.webservice.resources.AdminPrivilegesFilter;
 import io.dockstore.webservice.resources.AliasResource;
+import io.dockstore.webservice.resources.CloudInstanceResource;
 import io.dockstore.webservice.resources.CollectionResource;
 import io.dockstore.webservice.resources.DockerRepoResource;
 import io.dockstore.webservice.resources.DockerRepoTagResource;
@@ -141,6 +146,7 @@ import org.eclipse.jetty.servlet.FilterHolder;
 import org.eclipse.jetty.servlets.CrossOriginFilter;
 import org.glassfish.jersey.CommonProperties;
 import org.glassfish.jersey.server.filter.RolesAllowedDynamicFeature;
+import org.kohsuke.github.extras.okhttp3.ObsoleteUrlFactory;
 import org.pf4j.DefaultPluginManager;
 import org.pf4j.PluginWrapper;
 import org.slf4j.Logger;
@@ -159,18 +165,21 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
     public static final String GA4GH_API_PATH_V2_BETA = "/api/ga4gh/v2";
     public static final String GA4GH_API_PATH_V2_FINAL = "/ga4gh/trs/v2";
     public static final String GA4GH_API_PATH_V1 = "/api/ga4gh/v1";
-    public static OkHttpClient okHttpClient = null;
+    public static final String DOCKSTORE_WEB_CACHE = "/tmp/dockstore-web-cache";
+    public static final String DOCKSTORE_WEB_CACHE_MISS_LOG_FILE = "/tmp/dockstore-web-cache.misses.log";
+    public static final File CACHE_MISS_LOG_FILE = new File(DOCKSTORE_WEB_CACHE_MISS_LOG_FILE);
+
+    private static OkHttpClient okHttpClient = null;
     private static final Logger LOG = LoggerFactory.getLogger(DockstoreWebserviceApplication.class);
     private static final int BYTES_IN_KILOBYTE = 1024;
     private static final int KILOBYTES_IN_MEGABYTE = 1024;
     private static final int CACHE_IN_MB = 100;
     private static Cache cache = null;
 
-    private final HibernateBundle<DockstoreWebserviceConfiguration> hibernate = new HibernateBundle<DockstoreWebserviceConfiguration>(
-            Token.class, Tool.class, User.class, Tag.class, Label.class, SourceFile.class, Workflow.class, CollectionOrganization.class,
-            WorkflowVersion.class, FileFormat.class, Organization.class, Notification.class, OrganizationUser.class, Event.class, Collection.class,
-            Validation.class, BioWorkflow.class, Service.class, VersionMetadata.class, Image.class, Checksum.class, LambdaEvent.class,
-            ParsedInformation.class, EntryVersion.class) {
+    private final HibernateBundle<DockstoreWebserviceConfiguration> hibernate = new HibernateBundle<>(Token.class, Tool.class, User.class,
+            Tag.class, Label.class, SourceFile.class, Workflow.class, CollectionOrganization.class, WorkflowVersion.class, FileFormat.class,
+            Organization.class, Notification.class, OrganizationUser.class, Event.class, Collection.class, Validation.class, BioWorkflow.class, Service.class, VersionMetadata.class, Image.class, Checksum.class, LambdaEvent.class,
+            ParsedInformation.class, EntryVersion.class, DeletedUsername.class, CloudInstance.class) {
         @Override
         public DataSourceFactory getDataSourceFactory(DockstoreWebserviceConfiguration configuration) {
             return configuration.getDataSourceFactory();
@@ -181,8 +190,16 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         new DockstoreWebserviceApplication().run(args);
     }
 
-    public static Cache getCache() {
-        return cache;
+    public static Cache getCache(String cacheNamespace) {
+        if (cacheNamespace == null) {
+            return cache;
+        } else {
+            return generateCache(cacheNamespace);
+        }
+    }
+
+    public static OkHttpClient getOkHttpClient() {
+        return okHttpClient;
     }
 
     @Override
@@ -202,7 +219,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         bootstrap.addBundle(new AssetsBundle("/assets/", "/static/"));
 
         // for database migrations.xml
-        bootstrap.addBundle(new MigrationsBundle<DockstoreWebserviceConfiguration>() {
+        bootstrap.addBundle(new MigrationsBundle<>() {
             @Override
             public DataSourceFactory getDataSourceFactory(DockstoreWebserviceConfiguration configuration) {
                 return configuration.getDataSourceFactory();
@@ -212,22 +229,21 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         bootstrap.addBundle(new MultiPartBundle());
 
         if (cache == null) {
-            int cacheSize = CACHE_IN_MB * BYTES_IN_KILOBYTE * KILOBYTES_IN_MEGABYTE; // 100 MiB
-            final File cacheDir;
-            try {
-                // let's try using the same cache each time
-                // not sure how corruptible/non-curruptable the cache is
-                // https://github.com/square/okhttp/blob/parent-3.10.0/okhttp/src/main/java/okhttp3/internal/cache/DiskLruCache.java#L82 looks promising
-                cacheDir = Files.createDirectories(Paths.get("/tmp/dockstore-web-cache")).toFile();
-            } catch (IOException e) {
-                LOG.error("Could no create or re-use web cache", e);
-                throw new RuntimeException(e);
-            }
-            cache = new Cache(cacheDir, cacheSize);
+            cache = generateCache(null);
+        }
+        try {
+            cache.initialize();
+        } catch (IOException e) {
+            LOG.error("Could not create web cache, initialization exception", e);
+            throw new RuntimeException(e);
         }
         // match HttpURLConnection which does not have a timeout by default
-        okHttpClient = new OkHttpClient().newBuilder().cache(cache).connectTimeout(0, TimeUnit.SECONDS)
-                .readTimeout(0, TimeUnit.SECONDS).writeTimeout(0, TimeUnit.SECONDS).build();
+        OkHttpClient.Builder builder = new OkHttpClient().newBuilder();
+        if (System.getenv("CIRCLE_SHA1") != null) {
+            builder.eventListener(new CacheHitListener(DockstoreWebserviceApplication.class.getSimpleName(), "central"));
+        }
+        okHttpClient = builder.cache(cache).connectTimeout(0, TimeUnit.SECONDS).readTimeout(0, TimeUnit.SECONDS)
+                .writeTimeout(0, TimeUnit.SECONDS).build();
         try {
             // this can only be called once per JVM, a factory exception is thrown in our tests
             URL.setURLStreamHandlerFactory(new ObsoleteUrlFactory(okHttpClient));
@@ -235,10 +251,25 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
             if (factoryException.getMessage().contains("factory already defined")) {
                 LOG.debug("OkHttpClient already registered, skipping");
             } else {
-                LOG.error("Could no create web cache, factory exception", factoryException);
+                LOG.error("Could not create web cache, factory exception", factoryException);
                 throw new RuntimeException(factoryException);
             }
         }
+    }
+
+    private static Cache generateCache(String suffix) {
+        int cacheSize = CACHE_IN_MB * BYTES_IN_KILOBYTE * KILOBYTES_IN_MEGABYTE; // 100 MiB
+        final File cacheDir;
+        try {
+            // let's try using the same cache each time
+            // not sure how corruptible/non-curruptable the cache is
+            // namespace cache when testing on circle ci
+            cacheDir = Files.createDirectories(Paths.get(DOCKSTORE_WEB_CACHE + (suffix == null ? "" : "/" + suffix))).toFile();
+        } catch (IOException e) {
+            LOG.error("Could not create or re-use web cache", e);
+            throw new RuntimeException(e);
+        }
+        return new Cache(cacheDir, cacheSize);
     }
 
     private static void configureMapper(ObjectMapper objectMapper) {
@@ -288,9 +319,10 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
 
         final ElasticSearchHealthCheck elasticSearchHealthCheck = new ElasticSearchHealthCheck(new ToolsExtendedApi());
         environment.healthChecks().register("elasticSearch", elasticSearchHealthCheck);
-
+        environment.lifecycle().manage(new ElasticSearchHelper(configuration.getEsConfiguration()));
         final UserDAO userDAO = new UserDAO(hibernate.getSessionFactory());
         final TokenDAO tokenDAO = new TokenDAO(hibernate.getSessionFactory());
+        final DeletedUsernameDAO deletedUsernameDAO = new DeletedUsernameDAO(hibernate.getSessionFactory());
         final ToolDAO toolDAO = new ToolDAO(hibernate.getSessionFactory());
         final FileDAO fileDAO = new FileDAO(hibernate.getSessionFactory());
         final WorkflowDAO workflowDAO = new WorkflowDAO(hibernate.getSessionFactory());
@@ -315,12 +347,12 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
 
         final PermissionsInterface authorizer = PermissionsFactory.createAuthorizer(tokenDAO, configuration);
 
-        final EntryResource entryResource = new EntryResource(toolDAO, versionDAO, configuration);
+        final EntryResource entryResource = new EntryResource(tokenDAO, toolDAO, versionDAO, configuration);
         environment.jersey().register(entryResource);
 
         final WorkflowResource workflowResource = new WorkflowResource(httpClient, hibernate.getSessionFactory(), authorizer, entryResource, configuration);
         environment.jersey().register(workflowResource);
-        final ServiceResource serviceResource = new ServiceResource(httpClient, hibernate.getSessionFactory(), configuration);
+        final ServiceResource serviceResource = new ServiceResource(httpClient, hibernate.getSessionFactory(), entryResource, configuration);
         environment.jersey().register(serviceResource);
 
         // Note workflow resource must be passed to the docker repo resource, as the workflow resource refresh must be called for checker workflows
@@ -328,7 +360,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
 
         environment.jersey().register(dockerRepoResource);
         environment.jersey().register(new DockerRepoTagResource(toolDAO, tagDAO, eventDAO, versionDAO));
-        environment.jersey().register(new TokenResource(tokenDAO, userDAO, httpClient, cachingAuthenticator, configuration));
+        environment.jersey().register(new TokenResource(tokenDAO, userDAO, deletedUsernameDAO, httpClient, cachingAuthenticator, configuration));
 
         environment.jersey().register(new UserResource(httpClient, getHibernate().getSessionFactory(), workflowResource, serviceResource, dockerRepoResource, cachingAuthenticator, authorizer, configuration));
 
@@ -338,11 +370,13 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         environment.jersey().register(new HostedToolResource(getHibernate().getSessionFactory(), authorizer, configuration.getLimitConfig()));
         environment.jersey().register(new HostedWorkflowResource(getHibernate().getSessionFactory(), authorizer, configuration.getLimitConfig()));
         environment.jersey().register(new OrganizationResource(getHibernate().getSessionFactory()));
-        environment.jersey().register(new LambdaEventResource(getHibernate().getSessionFactory(), httpClient));
+        environment.jersey().register(new LambdaEventResource(getHibernate().getSessionFactory()));
         environment.jersey().register(new NotificationResource(getHibernate().getSessionFactory()));
         environment.jersey().register(new CollectionResource(getHibernate().getSessionFactory()));
         environment.jersey().register(new EventResource(eventDAO, userDAO));
         environment.jersey().register(new ToolTesterResource(configuration));
+        environment.jersey().register(new CloudInstanceResource(getHibernate().getSessionFactory()));
+
         // disable odd extra endpoints showing up
         final SwaggerConfiguration swaggerConfiguration = new SwaggerConfiguration().prettyPrint(true);
         swaggerConfiguration.setIgnoredRoutes(Lists.newArrayList("/application.wadl", "/pprof"));
@@ -371,30 +405,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         GoogleAnalyticsHelper.setConfig(configuration);
         GoogleAnalyticsHelper.initAnalyticsReporting();
 
-        ToolsApi toolsApi = new ToolsApi(null);
-        environment.jersey().register(toolsApi);
-
-        // TODO: attach V2 final properly
-        environment.jersey().register(new io.openapi.api.ToolsApi(null));
-
-        environment.jersey().register(new ToolsExtendedApi());
-        environment.jersey().register(new io.openapi.api.ToolClassesApi(null));
-        environment.jersey().register(new io.openapi.api.ServiceInfoApi(null));
-        environment.jersey().register(new MetadataApi(null));
-        environment.jersey().register(new ToolClassesApi(null));
-        environment.jersey().register(new PersistenceExceptionMapper());
-        environment.jersey().register(new TransactionExceptionMapper());
-
-        environment.jersey().register(new ToolsApiV1());
-        environment.jersey().register(new MetadataApiV1());
-        environment.jersey().register(new ToolClassesApiV1());
-
-        // extra renderers
-        environment.jersey().register(new CharsetResponseFilter());
-
-        // Swagger providers
-        environment.jersey().register(ApiListingResource.class);
-        environment.jersey().register(SwaggerSerializers.class);
+        registerAPIsAndMisc(environment);
 
         // optional CORS support
         // Enable CORS headers
@@ -410,7 +421,35 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         // Initialize GitHub App Installation Access Token cache
         CacheConfigManager cacheConfigManager = CacheConfigManager.getInstance();
         cacheConfigManager.initCache();
+    }
 
+    private void registerAPIsAndMisc(Environment environment) {
+        ToolsApi toolsApi = new ToolsApi(null);
+        environment.jersey().register(toolsApi);
+
+        // TODO: attach V2 final properly
+        environment.jersey().register(new io.openapi.api.ToolsApi(null));
+
+        environment.jersey().register(new ToolsExtendedApi());
+        environment.jersey().register(new io.openapi.api.ToolClassesApi(null));
+        environment.jersey().register(new io.openapi.api.ServiceInfoApi(null));
+        environment.jersey().register(new MetadataApi(null));
+        environment.jersey().register(new ToolClassesApi(null));
+        environment.jersey().register(new PersistenceExceptionMapper());
+        environment.jersey().register(new TransactionExceptionMapper());
+        environment.jersey().register(new ToolsApiV1());
+        environment.jersey().register(new MetadataApiV1());
+        environment.jersey().register(new ToolClassesApiV1());
+
+        // extra renderers
+        environment.jersey().register(new CharsetResponseFilter());
+
+        // Filter used to log every request an admin user makes.
+        environment.jersey().register(new AdminPrivilegesFilter());
+
+        // Swagger providers
+        environment.jersey().register(ApiListingResource.class);
+        environment.jersey().register(SwaggerSerializers.class);
     }
 
     private void describeAvailableLanguagePlugins(DefaultPluginManager languagePluginManager) {
@@ -446,4 +485,5 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
     public HibernateBundle<DockstoreWebserviceConfiguration> getHibernate() {
         return hibernate;
     }
+
 }

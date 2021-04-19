@@ -63,7 +63,7 @@ public interface AliasableResourceInterface<T extends Aliasable> {
 
     /**
      * Check that aliases do not contain invalid prefixes
-     * if the user adding them is not an admin or curator
+     * Code has changed to only allow the owner of the entry to add an alias.
      * @param aliases a Set of alias strings
      * @param user user authenticated to issue a DOI for the workflow
      * @param blockAliasesWithZenodoFormat block creation of an alias with a particular format
@@ -125,8 +125,8 @@ public interface AliasableResourceInterface<T extends Aliasable> {
     /**
      * Add aliases to an Entry (e.g. Workflow or Tool)
      * and check that they are valid before adding them:
-     * 1. If admin/curator, then no limit on prefix
-     * 2. If blockFormat false, then no limit on format
+     * Only works for owners of the entry
+     * If blockFormat false, then no limit on format
      * @param user user authenticated to issue a DOI for the workflow
      * @param id the id of the Entry
      * @param aliases a comma separated string of aliases

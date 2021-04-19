@@ -18,7 +18,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <parent>
-        <version>1.10.0-alpha.3-SNAPSHOT</version>
+        <version>1.11.0-alpha.2-SNAPSHOT</version>
         <groupId>io.dockstore</groupId>
         <artifactId>dockstore</artifactId>
         <relativePath>../pom.xml</relativePath>
@@ -33,6 +33,10 @@
             <plugin>
                 <artifactId>maven-deploy-plugin</artifactId>
             </plugin>
+            <plugin>
+                <groupId>org.codehaus.mojo</groupId>
+                <artifactId>flatten-maven-plugin</artifactId>
+            </plugin>
         </plugins>
     </build>
 
@@ -40,7 +44,7 @@
         <dependency>
             <groupId>io.dockstore</groupId>
             <artifactId>dockstore-common</artifactId>
-            <version>1.10.0-alpha.3-SNAPSHOT</version>
+            <version>1.11.0-alpha.2-SNAPSHOT</version>
         </dependency>
         <dependency>
             <groupId>org.pf4j</groupId>

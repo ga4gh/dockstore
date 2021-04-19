@@ -1,21 +1,27 @@
 package io.dockstore.webservice.languages;
 
 import java.io.File;
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 
 import io.dockstore.common.Registry;
+import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.core.FileFormat;
 import io.dockstore.webservice.core.ParsedInformation;
+import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Tool;
 import io.dockstore.webservice.jdbi.ToolDAO;
 import io.dropwizard.testing.ResourceHelpers;
 import org.apache.commons.io.FileUtils;
+import org.apache.http.HttpStatus;
 import org.junit.Assert;
 import org.junit.Test;
 import org.mockito.Mockito;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
 /**
@@ -100,5 +106,60 @@ public class CWLHandlerTest {
         Assert.assertEquals("https://www.dockstore.org/containers/quay.io/foo/bar", handler.getURLFromEntry("quay.io/foo/bar:1", toolDAO));
         Assert.assertEquals("https://www.dockstore.org/containers/registry.hub.docker.com/foo/bar", handler.getURLFromEntry("foo/bar", toolDAO));
         Assert.assertEquals("https://www.dockstore.org/containers/registry.hub.docker.com/foo/bar", handler.getURLFromEntry("foo/bar:1", toolDAO));
+    }
+
+    @Test
+    public void testGetContentWithMalformedDescriptors() throws IOException {
+        CWLHandler cwlHandler = new CWLHandler();
+
+        // create and mock parameters for getContent()
+        final Set<SourceFile> emptySet = Collections.emptySet();
+        final ToolDAO toolDAO = Mockito.mock(ToolDAO.class);
+        when(toolDAO.findAllByPath(Mockito.anyString(), Mockito.anyBoolean())).thenReturn(null);
+
+        // expect parsing error
+        File cwlFile = new File(ResourceHelpers.resourceFilePath("brokenCWL.cwl"));
+        try {
+            cwlHandler.getContent("/brokenCWL.cwl", FileUtils.readFileToString(cwlFile, StandardCharsets.UTF_8), emptySet,
+                LanguageHandlerInterface.Type.TOOLS, toolDAO);
+            Assert.fail("Expected parsing error");
+        } catch (CustomWebApplicationException e) {
+            Assert.assertEquals(HttpStatus.SC_UNPROCESSABLE_ENTITY, e.getResponse().getStatus());
+            assertThat(e.getErrorMessage()).contains(CWLHandler.CWL_PARSE_ERROR);
+
+        }
+
+        // expect error based on invalid cwlVersion
+        cwlFile = new File(ResourceHelpers.resourceFilePath("badVersionCWL.cwl"));
+        try {
+            cwlHandler.getContent("/badVersionCWL.cwl", FileUtils.readFileToString(cwlFile, StandardCharsets.UTF_8), emptySet,
+                LanguageHandlerInterface.Type.TOOLS, toolDAO);
+            Assert.fail("Expected cwlVersion error");
+        } catch (CustomWebApplicationException e) {
+            Assert.assertEquals(HttpStatus.SC_UNPROCESSABLE_ENTITY, e.getResponse().getStatus());
+            assertThat(e.getErrorMessage()).contains(CWLHandler.CWL_VERSION_ERROR);
+        }
+
+        // expect error based on an undefined cwlVersion
+        cwlFile = new File(ResourceHelpers.resourceFilePath("noVersionCWL.cwl"));
+        try {
+            cwlHandler.getContent("/noVersionCWL.cwl", FileUtils.readFileToString(cwlFile, StandardCharsets.UTF_8), emptySet,
+                LanguageHandlerInterface.Type.TOOLS, toolDAO);
+            Assert.fail("Expected undefined cwlVersion error");
+        } catch (CustomWebApplicationException e) {
+            Assert.assertEquals(HttpStatus.SC_UNPROCESSABLE_ENTITY, e.getResponse().getStatus());
+            assertThat(e.getErrorMessage()).contains(CWLHandler.CWL_NO_VERSION_ERROR);
+        }
+
+        // expect error based on invalid JSON $import/$include
+        cwlFile = new File(ResourceHelpers.resourceFilePath("invalidMapCWL.cwl"));
+        try {
+            cwlHandler.getContent("/invalidMapCWL.cwl", FileUtils.readFileToString(cwlFile, StandardCharsets.UTF_8), emptySet,
+                LanguageHandlerInterface.Type.TOOLS, toolDAO);
+            Assert.fail("Expected ($)import/($)include error");
+        } catch (CustomWebApplicationException e) {
+            Assert.assertEquals(HttpStatus.SC_UNPROCESSABLE_ENTITY, e.getResponse().getStatus());
+            assertThat(e.getErrorMessage()).contains(CWLHandler.CWL_PARSE_SECONDARY_ERROR);
+        }
     }
 }

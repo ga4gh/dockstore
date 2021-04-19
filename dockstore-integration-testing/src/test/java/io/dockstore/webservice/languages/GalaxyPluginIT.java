@@ -24,7 +24,6 @@ import java.nio.file.Paths;
 import java.util.List;
 
 import io.dockstore.client.cli.BaseIT;
-import io.dockstore.client.cli.SwaggerUtility;
 import io.dockstore.common.CommonTestUtilities;
 import io.dockstore.common.ConfidentialTest;
 import io.dockstore.common.Constants;
@@ -37,6 +36,8 @@ import io.dockstore.openapi.client.api.Ga4Ghv20Api;
 import io.dockstore.openapi.client.model.Tool;
 import io.dockstore.webservice.DockstoreWebserviceApplication;
 import io.dockstore.webservice.DockstoreWebserviceConfiguration;
+import io.dockstore.webservice.core.SourceFile;
+import io.dockstore.webservice.jdbi.FileDAO;
 import io.dropwizard.testing.ConfigOverride;
 import io.dropwizard.testing.DropwizardTestSupport;
 import io.swagger.client.ApiClient;
@@ -44,8 +45,12 @@ import io.swagger.client.api.MetadataApi;
 import io.swagger.client.api.WorkflowsApi;
 import io.swagger.client.model.DescriptorLanguageBean;
 import io.swagger.client.model.Workflow;
+import io.swagger.client.model.WorkflowVersion;
 import org.apache.commons.configuration2.INIConfiguration;
 import org.apache.commons.io.FileUtils;
+import org.hibernate.Session;
+import org.hibernate.SessionFactory;
+import org.hibernate.context.internal.ManagedSessionContext;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.Before;
@@ -115,6 +120,10 @@ public class GalaxyPluginIT {
         }
     };
 
+    private final String galaxyWorkflowRepo = "DockstoreTestUser2/workflow-testing-repo";
+    private final String installationId = "1179416";
+    private FileDAO fileDAO;
+
     @BeforeClass
     public static void dropAndRecreateDB() throws Exception {
         CommonTestUtilities.dropAndRecreateNoTestData(SUPPORT);
@@ -124,11 +133,20 @@ public class GalaxyPluginIT {
 
     @AfterClass
     public static void afterClass() {
+        SUPPORT.getEnvironment().healthChecks().shutdown();
         SUPPORT.after();
     }
 
     @Before
     public void setup() throws Exception {
+        DockstoreWebserviceApplication application = SUPPORT.getApplication();
+        SessionFactory sessionFactory = application.getHibernate().getSessionFactory();
+        this.fileDAO = new FileDAO(sessionFactory);
+
+        // used to allow us to use tokenDAO outside of the web service
+        Session session = application.getHibernate().getSessionFactory().openSession();
+        ManagedSessionContext.bind(session);
+
         CommonTestUtilities.cleanStatePrivate2(SUPPORT, false);
     }
 
@@ -163,8 +181,8 @@ public class GalaxyPluginIT {
                         "", DescriptorLanguage.GXFORMAT2.getShortName(), "");
         workflowApi.refresh(wdlWorkflow.getId(), false);
         workflowApi.refresh(galaxyWorkflow.getId(), false);
-        workflowApi.publish(wdlWorkflow.getId(), SwaggerUtility.createPublishRequest(true));
-        workflowApi.publish(galaxyWorkflow.getId(), SwaggerUtility.createPublishRequest(true));
+        workflowApi.publish(wdlWorkflow.getId(), CommonTestUtilities.createPublishRequest(true));
+        workflowApi.publish(galaxyWorkflow.getId(), CommonTestUtilities.createPublishRequest(true));
 
         io.dockstore.openapi.client.ApiClient newWebClient = new io.dockstore.openapi.client.ApiClient();
         File configFile = FileUtils.getFile("src", "test", "resources", "config");
@@ -180,5 +198,17 @@ public class GalaxyPluginIT {
         assertEquals(1, allStuffGalaxy.size());
         assertEquals(1, allStuffWdl.size());
         assertTrue(allStuffCWL.isEmpty());
+    }
+
+    @Test
+    public void testTestParameterPaths() {
+        final ApiClient webClient = getWebClient(true, BaseIT.USER_2_USERNAME, testingPostgres);
+        WorkflowsApi workflowApi = new WorkflowsApi(webClient);
+        workflowApi.handleGitHubRelease(galaxyWorkflowRepo, BaseIT.USER_2_USERNAME, "refs/tags/dockstore/3851", installationId);
+        Workflow workflow = workflowApi.getWorkflowByPath("github.com/" + galaxyWorkflowRepo + "/COVID-19 variation analysis on Illumina metagenomic data", "versions", false);
+        WorkflowVersion version = workflow.getWorkflowVersions().get(0);
+        List<SourceFile> sourceFiles = fileDAO.findSourceFilesByVersion(version.getId());
+        assertTrue("Test file should have the expected path",
+                sourceFiles.stream().anyMatch(sourceFile -> sourceFile.getPath().endsWith("/workflow-test.yml")));
     }
 }

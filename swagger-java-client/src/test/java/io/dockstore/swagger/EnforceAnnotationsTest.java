@@ -17,9 +17,14 @@ public class EnforceAnnotationsTest {
         boolean hasJsonSubTypes = false;
         for (Annotation an : annotations) {
             final String toString = an.toString();
+            // example string to examine:
+            // @com.fasterxml.jackson.annotation.JsonSubTypes(value={@com.fasterxml.jackson.annotation.JsonSubTypes$Type(name="Service",
+            // names={}, value=io.swagger.client.model.Service.class), @com.fasterxml.jackson.annotation.JsonSubTypes$Type(name="BioWorkflow",
+            // names={}, value=io.swagger.client.model.BioWorkflow.class)})
             if (toString.startsWith("@com.fasterxml.jackson.annotation.JsonSubTypes(") && toString
-                .contains("name=\"Service\", value=io.swagger.client.model.Service.class") && toString
-                .contains("name=\"BioWorkflow\", value=io.swagger.client.model.BioWorkflow.class")) {
+                    // https://stackoverflow.com/questions/15130309/how-to-use-regex-in-string-contains-method-in-java
+                    .matches(".*name=\\\"Service\\\".*\\bvalue=io.swagger.client.model.Service.class.*") && toString
+                    .matches(".*name=\\\"BioWorkflow\\\".*value=io.swagger.client.model.BioWorkflow.class.*")) {
                 hasJsonSubTypes = true;
             }
         }

@@ -26,6 +26,7 @@ import io.dockstore.common.ConfidentialTest;
 import io.dockstore.common.DescriptorLanguage;
 import io.dockstore.common.WorkflowTest;
 import io.dockstore.webservice.core.dag.ElementsDefinition;
+import io.dockstore.webservice.languages.WDLHandler;
 import io.swagger.client.ApiException;
 import io.swagger.client.api.WorkflowsApi;
 import io.swagger.client.model.Workflow;
@@ -39,6 +40,7 @@ import org.junit.contrib.java.lang.system.ExpectedSystemExit;
 import org.junit.contrib.java.lang.system.SystemOutRule;
 import org.junit.experimental.categories.Category;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.Assert.fail;
 
 /**
@@ -342,7 +344,7 @@ public class DAGWorkflowTestIT extends BaseIT {
             getJSON("DockstoreTestUser2/ComplexImportsWdl", "/parent/parent.wdl", "wdl", "test");
             fail("Invalid WDL somehow came back good");
         } catch (Exception ex) {
-            Assert.assertTrue(ex.getMessage().contains("could not process wdl into DAG: Failed to import workflow importC.wdl."));
+            assertThat(ex.getMessage()).contains(WDLHandler.WDL_PARSE_ERROR);
         }
     }
 

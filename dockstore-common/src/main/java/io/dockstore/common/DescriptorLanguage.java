@@ -70,21 +70,6 @@ public enum DescriptorLanguage {
         public boolean isRelevantFileType(FileType type) {
             return super.isRelevantFileType(type) || type == FileType.DOCKSTORE_SERVICE_OTHER;
         }
-    },
-    // crappy evil hack for 1.6.0 backwards compatibility after all sorts of Jackson annotations failed
-    // delete after 1.6.0 CLI users fade out https://github.com/dockstore/dockstore/issues/2860
-    OLD_CWL("cwl", "Common Workflow Language", FileType.DOCKSTORE_CWL, FileType.CWL_TEST_JSON, CWL.defaultPrimaryDescriptorExtensions) {
-        @Override
-        public boolean isRelevantFileType(FileType type) {
-            return super.isRelevantFileType(type) || type == FileType.DOCKERFILE;
-        }
-    },
-    OLD_WDL("wdl", "Workflow Description Language", FileType.DOCKSTORE_WDL, FileType.WDL_TEST_JSON,
-        WDL.defaultPrimaryDescriptorExtensions) {
-        @Override
-        public boolean isRelevantFileType(FileType type) {
-            return super.isRelevantFileType(type) || type == FileType.DOCKERFILE;
-        }
     };
 
     /**

@@ -61,5 +61,4 @@ dockstore-integration-testing/src/test/resources/dockstoreTest.yml
 # The tarball of the above three confidential files
 dockstore-integration-testing/src/test/resources/secrets.tar
 
-
 dockstore-webservice/src/main/resources/openapi3/unsortedopenapi.yaml

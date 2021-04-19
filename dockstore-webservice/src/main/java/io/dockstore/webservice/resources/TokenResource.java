@@ -17,6 +17,10 @@
 package io.dockstore.webservice.resources;
 
 import java.io.IOException;
+import java.net.MalformedURLException;
+import java.net.URL;
+import java.text.MessageFormat;
+import java.time.Instant;
 import java.util.Collections;
 import java.util.Date;
 import java.util.HashMap;
@@ -57,12 +61,15 @@ import io.dockstore.webservice.DockstoreWebserviceConfiguration;
 import io.dockstore.webservice.core.PrivacyPolicyVersion;
 import io.dockstore.webservice.core.TOSVersion;
 import io.dockstore.webservice.core.Token;
+import io.dockstore.webservice.core.TokenScope;
 import io.dockstore.webservice.core.TokenType;
 import io.dockstore.webservice.core.User;
+import io.dockstore.webservice.helpers.DeletedUserHelper;
 import io.dockstore.webservice.helpers.GitHubHelper;
 import io.dockstore.webservice.helpers.GitHubSourceCodeRepo;
 import io.dockstore.webservice.helpers.GoogleHelper;
 import io.dockstore.webservice.helpers.SourceCodeRepoFactory;
+import io.dockstore.webservice.jdbi.DeletedUsernameDAO;
 import io.dockstore.webservice.jdbi.TokenDAO;
 import io.dockstore.webservice.jdbi.UserDAO;
 import io.dropwizard.auth.Auth;
@@ -113,13 +120,13 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
     private static final String QUAY_URL = "https://quay.io/api/v1/";
     private static final String BITBUCKET_URL = "https://bitbucket.org/";
     private static final String GITLAB_URL = "https://gitlab.com/";
-    private static final String ORCID_URL = "https://orcid.org/";
-    private static final TOSVersion CURRENT_TOS_VERSION = TOSVersion.TOS_VERSION_1;
+    private static final TOSVersion CURRENT_TOS_VERSION = TOSVersion.TOS_VERSION_2;
     private static final PrivacyPolicyVersion CURRENT_PRIVACY_POLICY_VERSION = PrivacyPolicyVersion.PRIVACY_POLICY_VERSION_2_5;
     private static final Logger LOG = LoggerFactory.getLogger(TokenResource.class);
 
     private final TokenDAO tokenDAO;
     private final UserDAO userDAO;
+    private final DeletedUsernameDAO deletedUsernameDAO;
 
     private final String githubClientID;
     private final String githubClientSecret;
@@ -137,16 +144,19 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
     private final String googleClientSecret;
     private final String orcidClientID;
     private final String orcidClientSecret;
+    private final String orcidScope;
     private final HttpClient client;
     private final CachingAuthenticator<String, User> cachingAuthenticator;
 
     private final String orcidSummary = "Add a new orcid.org token";
     private final String orcidDescription = "Using OAuth code from ORCID, request and store tokens from ORCID API";
+    private String orcidUrl = null;
 
-    public TokenResource(TokenDAO tokenDAO, UserDAO enduserDAO, HttpClient client, CachingAuthenticator<String, User> cachingAuthenticator,
+    public TokenResource(TokenDAO tokenDAO, UserDAO enduserDAO, DeletedUsernameDAO deletedUsernameDAO, HttpClient client, CachingAuthenticator<String, User> cachingAuthenticator,
             DockstoreWebserviceConfiguration configuration) {
         this.tokenDAO = tokenDAO;
         userDAO = enduserDAO;
+        this.deletedUsernameDAO = deletedUsernameDAO;
         this.githubClientID = configuration.getGithubClientID();
         this.githubClientSecret = configuration.getGithubClientSecret();
         this.bitbucketClientID = configuration.getBitbucketClientID();
@@ -162,9 +172,17 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
         this.googleClientID = configuration.getGoogleClientID();
         this.googleClientSecret = configuration.getGoogleClientSecret();
         this.orcidClientID = configuration.getOrcidClientID();
+        this.orcidScope = configuration.getUiConfig().getOrcidScope();
         this.orcidClientSecret = configuration.getOrcidClientSecret();
         this.client = client;
         this.cachingAuthenticator = cachingAuthenticator;
+        try {
+            URL orcidAuthUrl = new URL(configuration.getUiConfig().getOrcidAuthUrl());
+            // orcidUrl should be something like "https://sandbox.orcid.org/" or "https://orcid.org/"
+            orcidUrl = orcidAuthUrl.getProtocol() + "://" + orcidAuthUrl.getHost() + "/";
+        } catch (MalformedURLException e) {
+            LOG.error("The ORCID Auth URL in the dropwizard configuration file is malformed.", e);
+        }
     }
 
     @GET
@@ -230,7 +248,12 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
     private void checkIfAccountHasBeenLinked(String username, TokenType tokenType) {
         Token existingToken = tokenDAO.findTokenByUserNameAndTokenSource(username, tokenType);
         if (existingToken != null) {
-            String msg = "A '" + tokenType.toString() + "' token already exists on Dockstore for the account '" + username + "'";
+            User dockstoreUser = userDAO.findById(existingToken.getUserId());
+            final String tokenAccount = "\"" + tokenType.toString() + "\"";
+            final String tokenAccountName = "\"" + username + "\"";
+            final String dockstoreUserName = "\"" + dockstoreUser.getName() + "\"";
+            String msg = MessageFormat.format("The {0} account {1} is already linked to the Dockstore user {2}. "
+                + "Login to Dockstore using your {0} {1} user.", tokenAccount, tokenAccountName, dockstoreUserName);
             LOG.info(msg);
             throw new CustomWebApplicationException(msg, HttpStatus.SC_CONFLICT);
         }
@@ -383,9 +406,16 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
 
         if (registerUser && authUser.isEmpty()) {
             if (user == null) {
+                String googleLogin = userinfo.getEmail();
+                String username = googleLogin;
+                int count = 1;
+
+                while (userDAO.findByUsername(username) != null || DeletedUserHelper.nonReusableUsernameFound(username, deletedUsernameDAO)) {
+                    username = googleLogin + count++;
+                }
+
                 user = new User();
-                // Pull user information from Google
-                user.setUsername(userinfo.getEmail());
+                user.setUsername(username);
                 userID = userDAO.create(user);
             } else {
                 throw new CustomWebApplicationException("User already exists, cannot register new user", HttpStatus.SC_FORBIDDEN);
@@ -515,7 +545,7 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
             // check that there was no previous user, but by default use the github login
             String username = githubLogin;
             int count = 1;
-            while (userDAO.findByUsername(username) != null) {
+            while (userDAO.findByUsername(username) != null || DeletedUserHelper.nonReusableUsernameFound(username, deletedUsernameDAO)) {
                 username = githubLogin + count++;
             }
 
@@ -565,13 +595,11 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
             checkIfAccountHasBeenLinked(githubLogin, TokenType.GITHUB_COM);
             tokenDAO.create(githubToken);
             user = userDAO.findById(userID);
-            GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(githubToken, null);
+            GitHubSourceCodeRepo gitHubSourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(githubToken);
             gitHubSourceCodeRepo.syncUserMetadataFromGitHub(user);
         }
         return dockstoreToken;
     }
-
-
 
     private Token createDockstoreToken(long userID, String githubLogin) {
         Token dockstoreToken;
@@ -663,19 +691,21 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
         String refreshToken;
         String username;
         String orcid;
+        String scope;
+        Long expirationTime;
 
         if (code.isEmpty()) {
             throw new CustomWebApplicationException("Please provide an access code", HttpStatus.SC_BAD_REQUEST);
         }
 
         final AuthorizationCodeFlow flow = new AuthorizationCodeFlow.Builder(BearerToken.authorizationHeaderAccessMethod(), HTTP_TRANSPORT,
-                JSON_FACTORY, new GenericUrl(ORCID_URL + "oauth/token"),
+                JSON_FACTORY, new GenericUrl(orcidUrl + "oauth/token"),
                 new ClientParametersAuthentication(orcidClientID, orcidClientSecret), orcidClientID,
-                ORCID_URL + "/authorize").build();
+                orcidUrl + "/authorize").build();
 
         try {
-            TokenResponse tokenResponse = flow.newTokenRequest(code).setScopes(Collections.singletonList("/authenticate"))
-                    .setRequestInitializer(request -> request.getHeaders().setAccept("application/json")).execute();
+            TokenResponse tokenResponse = flow.newTokenRequest(code).setScopes(Collections.singletonList(orcidScope))
+                    .setRequestInitializer(request -> request.getHeaders().setAccept(MediaType.APPLICATION_JSON)).execute();
             accessToken = tokenResponse.getAccessToken();
             refreshToken = tokenResponse.getRefreshToken();
 
@@ -683,6 +713,10 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
             // get them to store in the token and user tables
             username = tokenResponse.get("name").toString();
             orcid = tokenResponse.get("orcid").toString();
+            scope = tokenResponse.getScope();
+            Instant instant = Instant.now();
+            instant.plusSeconds(tokenResponse.getExpiresInSeconds());
+            expirationTime = instant.getEpochSecond();
 
         } catch (IOException e) {
             LOG.error("Retrieving accessToken was unsuccessful" + e.getMessage(), e);
@@ -700,6 +734,13 @@ public class TokenResource implements AuthenticatedResourceInterface, SourceCont
             token.setRefreshToken(refreshToken);
             token.setUserId(user.getId());
             token.setUsername(username);
+            TokenScope tokenScope = TokenScope.getEnumByString(scope);
+            if (tokenScope == null) {
+                LOG.error("Could not convert scope string to enum: " + scope);
+                throw new CustomWebApplicationException("Could not save ORCID token, contact Dockstore team", HttpStatus.SC_INTERNAL_SERVER_ERROR);
+            }
+            token.setScope(tokenScope);
+            token.setExpirationTime(expirationTime);
 
             checkIfAccountHasBeenLinked(username, TokenType.ORCID_ORG);
             long create = tokenDAO.create(token);

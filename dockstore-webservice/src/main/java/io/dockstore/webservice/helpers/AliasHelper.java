@@ -68,8 +68,8 @@ public final class AliasHelper {
     /**
      * Add aliases to a Workflow Version
      * and check that they are valid before adding them:
-     * 1. If admin/curator, then no limit on prefix
-     * 2. If blockFormat false, then no limit on format
+     * Only works for owner of the entry
+     * If blockFormat false, then no limit on format
      * @param authenticatedResourceInterface interface to check users and entries
      * @param workflowDAO Workflow data access object
      * @param workflowVersionDAO Workflow Version data access object

@@ -120,6 +120,7 @@ public class TokenResourceIT {
 
     @AfterClass
     public static void afterClass() {
+        SUPPORT.getEnvironment().healthChecks().shutdown();
         SUPPORT.after();
     }
 
@@ -318,6 +319,8 @@ public class TokenResourceIT {
     private void createAccount1(TokensApi unAuthenticatedTokensApi) {
         io.swagger.client.model.Token account1DockstoreToken = unAuthenticatedTokensApi.addGoogleToken(getSatellizer(SUFFIX3, true));
         Assert.assertEquals(GOOGLE_ACCOUNT_USERNAME1, account1DockstoreToken.getUsername());
+        User testUser = userDAO.findById(account1DockstoreToken.getUserId());
+        testUser.setUsername(CUSTOM_USERNAME1);
         TokensApi mainUserTokensApi = new TokensApi(getWebClient(true, GOOGLE_ACCOUNT_USERNAME1, testingPostgres));
         mainUserTokensApi.addGithubToken(getFakeCode(SUFFIX1));
     }
@@ -325,6 +328,8 @@ public class TokenResourceIT {
     private void createAccount2(TokensApi unAuthenticatedTokensApi) {
         io.swagger.client.model.Token otherGoogleUserToken = unAuthenticatedTokensApi.addGoogleToken(getSatellizer(SUFFIX4, true));
         Assert.assertEquals(GOOGLE_ACCOUNT_USERNAME2, otherGoogleUserToken.getUsername());
+        User testUser = userDAO.findById(otherGoogleUserToken.getUserId());
+        testUser.setUsername(CUSTOM_USERNAME2);
     }
 
     /**
@@ -376,7 +381,7 @@ public class TokenResourceIT {
             fail();
         } catch (ApiException e) {
             Assert.assertEquals(HttpStatus.SC_CONFLICT, e.getCode());
-            Assert.assertTrue(e.getMessage().contains("already exists"));
+            Assert.assertTrue(e.getMessage().contains("is already linked"));
             // Call should fail
         }
     }
@@ -393,7 +398,7 @@ public class TokenResourceIT {
             fail();
         } catch (ApiException e) {
             Assert.assertEquals(HttpStatus.SC_CONFLICT, e.getCode());
-            Assert.assertTrue(e.getMessage().contains("already exists"));
+            Assert.assertTrue(e.getMessage().contains("is already linked"));
             // Call should fail
         }
     }

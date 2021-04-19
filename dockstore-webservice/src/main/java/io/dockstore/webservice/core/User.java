@@ -206,6 +206,10 @@ public class User implements Principal, Comparable<User>, Serializable {
     @JsonIgnore
     private String temporaryCredential;
 
+    @OneToMany(cascade = CascadeType.ALL, mappedBy = "user", orphanRemoval = true)
+    @JsonIgnore
+    private Set<CloudInstance> cloudInstances;
+
     /**
      * The user's ORCID id in the format xxxx-xxxx-xxxx-xxxx
      */
@@ -293,7 +297,7 @@ public class User implements Principal, Comparable<User>, Serializable {
             return false;
         } else {
             Token githubToken = githubByUserId.get(0);
-            GitHubSourceCodeRepo sourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(githubToken, null);
+            GitHubSourceCodeRepo sourceCodeRepo = (GitHubSourceCodeRepo)SourceCodeRepoFactory.createSourceCodeRepo(githubToken);
             sourceCodeRepo.checkSourceCodeValidity();
             sourceCodeRepo.syncUserMetadataFromGitHub(this);
             return true;
@@ -345,10 +349,6 @@ public class User implements Principal, Comparable<User>, Serializable {
 
     public void addEntry(Entry entry) {
         entries.add(entry);
-    }
-
-    public boolean removeEntry(Entry entry) {
-        return entries.remove(entry);
     }
 
     public Set<Entry> getStarredEntries() {
@@ -526,6 +526,14 @@ public class User implements Principal, Comparable<User>, Serializable {
     @JsonIgnore
     public void setBanned(boolean banned) {
         isBanned = banned;
+    }
+
+    public void setCloudInstances(Set<CloudInstance> cloudInstances) {
+        this.cloudInstances = cloudInstances;
+    }
+
+    public Set<CloudInstance> getCloudInstances() {
+        return cloudInstances;
     }
 
     /**

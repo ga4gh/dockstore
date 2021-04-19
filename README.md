@@ -3,22 +3,21 @@
 [![codecov](https://codecov.io/gh/dockstore/dockstore/branch/develop/graph/badge.svg)](https://codecov.io/gh/dockstore/dockstore)
 [![Website](https://img.shields.io/website/https/dockstore.org.svg)](https://dockstore.org)
 [![Gitter](https://badges.gitter.im/Join%20Chat.svg)](https://gitter.im/ga4gh/dockstore?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)  
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.3628791.svg)](https://doi.org/10.5281/zenodo.3628791)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.4289328.svg)](https://doi.org/10.5281/zenodo.4289328)
 [![Uptime Robot status](https://img.shields.io/uptimerobot/status/m779655940-a297af07d1cac2d6ad40c491.svg)]()
 [![license](https://img.shields.io/hexpm/l/plug.svg?maxAge=2592000)](LICENSE)
 [![CircleCI](https://circleci.com/gh/dockstore/dockstore/tree/develop.svg?style=svg)](https://circleci.com/gh/dockstore/dockstore/tree/develop)
 [![Documentation Status](https://readthedocs.org/projects/dockstore/badge/?version=develop)](https://dockstore.readthedocs.io/en/develop/?badge=develop)
-[![Docker Repository on Quay](https://quay.io/repository/dockstore/dockstore-webservice/status "Docker Repository on Quay")](https://quay.io/repository/dockstore/dockstore-webservice)
 
 
 # Dockstore
 
 Dockstore provides a place for users to share tools encapsulated in Docker and described with the Common 
-Workflow Language (CWL), WDL (Workflow Description Language), or Nextflow. This enables scientists to share analytical 
+Workflow Language (CWL), WDL (Workflow Description Language), Nextflow, or Galaxy. This enables scientists to share analytical 
 workflows so that they are  machine readable as well as runnable in a variety of environments. While the 
-Dockstore is focused on serving researchers in the biosciences, the combination of Docker + CWL/WDL can be used by 
+Dockstore is focused on serving researchers in the biosciences, the combination of Docker + workflow languages can be used by 
 anyone to describe the tools and services in their Docker images in a standardized, machine-readable way.  
-We hope to use this project as motivation to create a GA4GH API standard for container registries.
+Dockstore is also a leading implementor of the GA4GH API standard for container registries, [TRS](https://www.ga4gh.org/news/tool-registry-service-api-enabling-an-interoperable-library-of-genomics-analysis-tools/).
 
 For the live site see [dockstore.org](https://dockstore.org)
 
@@ -50,25 +49,6 @@ server-url = https://www.dockstore.org/api
 
 1. Ensure that you are using Java 11. Java 8 (both Open and Oracle) will not work.
 
-### Migration to Dockstore 1.3
-
-1. Ensure that your Java 8 version is newer than update 101. 
-
-### Migration to Dockstore 1.2
-
-This keeps track of breaking changes when migrating from Dockstore 1.1 to beta releases of 1.2 on the client side. 
-
-1. Paths for input files are standardized to paths like `s3://test.bucket/test`, `icgc://1234-efg`, `https://file.org/test.txt`. This means paths like `icgc:1234-efg` will no longer work
-2. A new version of cwltool 
-3. The syntax for launching tools has been simplified. `--local-entry` is no longer a flag, but is an alternative to `--entry`.
-
-### Migration to Dockstore 1.2.5
-
-Unfortunately, new unique indexes enforcing better data consistency require a clean-up of unpublished workflows. Published content should remain unaffected. 
-```
-delete from workflow_workflowversion ww where ww.workflowid in (select id from workflow where ispublished='f');
-delete from workflow where ispublished='f';
-```
 
 ### File Provisioning
 
@@ -117,6 +97,12 @@ Dockstore users, note the setup instructions for postgres. Specifically, you wil
 and setup with the database user specified in [.travis.yml](https://github.com/dockstore/dockstore/blob/develop/.travis.yml#L26) (ideally, postgres is need only for integration tests but not unit tests).
 
 ### Building
+
+As an alternative to the following commands, if you do not have Maven installed you can use the maven wrapper as a substitute. For example:
+
+    ./mvnw clean install
+    # instead of
+    mvn clean install
 
 If you maven build in the root directory this will build not only the web service but the client tool:
 

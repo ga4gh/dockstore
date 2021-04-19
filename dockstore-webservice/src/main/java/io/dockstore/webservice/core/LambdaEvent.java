@@ -168,7 +168,8 @@ public class LambdaEvent {
     public enum LambdaEventType {
         PUSH,
         DELETE,
-        INSTALL
+        INSTALL,
+        PUBLISH
     }
 
 }

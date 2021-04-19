@@ -26,6 +26,7 @@ import org.yaml.snakeyaml.Yaml;
 import org.yaml.snakeyaml.constructor.Constructor;
 import org.yaml.snakeyaml.introspector.Property;
 import org.yaml.snakeyaml.introspector.PropertyUtils;
+import org.yaml.snakeyaml.representer.Representer;
 
 public final class DockstoreYamlHelper {
 
@@ -175,18 +176,14 @@ public final class DockstoreYamlHelper {
 
     private static <T> T readContent(final String content, final Constructor constructor) throws DockstoreYamlException {
         try {
-            final Yaml yaml = new Yaml(constructor);
+            Representer representer = new Representer();
+            representer.getPropertyUtils().setSkipMissingProperties(true);
+            final Yaml yaml = new Yaml(constructor, representer);
             return yaml.load(content);
         } catch (Exception e) {
             final String exceptionMsg = e.getMessage();
             String errorMsg = ERROR_READING_DOCKSTORE_YML;
-            final Matcher matcher = WRONG_KEY_PATTERN.matcher(exceptionMsg);
-
-            if (matcher.find()) {
-                errorMsg += " Unrecognized property \"" + matcher.group(1) + "\"";
-            } else {
-                errorMsg += exceptionMsg;
-            }
+            errorMsg += exceptionMsg;
             LOG.error(errorMsg, e);
             throw new DockstoreYamlException(errorMsg);
         }

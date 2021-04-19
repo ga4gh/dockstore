@@ -74,11 +74,15 @@ public class OpenApiIT {
     public void testSwagger20() {
         Response response = client.target(baseURL + "swagger.json").request().get();
         assertThat(response.getStatus()).isEqualTo(HttpStatus.SC_OK);
+        // To prevent connection leak?
+        response.readEntity(String.class);
     }
 
     @Test
     public void testOpenApi30() {
         Response response = client.target(baseURL + "openapi.yaml").request().get();
         assertThat(response.getStatus()).isEqualTo(HttpStatus.SC_OK);
+        // To prevent connection leak?
+        response.readEntity(String.class);
     }
 }

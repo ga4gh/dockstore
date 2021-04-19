@@ -23,6 +23,8 @@ import java.util.Objects;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.Entity;
+import javax.persistence.EnumType;
+import javax.persistence.Enumerated;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -31,6 +33,7 @@ import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ComparisonChain;
@@ -103,6 +106,17 @@ public class Token implements Comparable<Token> {
     @Column
     @ApiModelProperty(position = 5)
     private long userId;
+
+    // Null means don't know or not applicable.
+    @JsonIgnore
+    @Column
+    @Enumerated(EnumType.STRING)
+    private TokenScope scope;
+
+    // Token expiration time in seconds since epoch. Null means don't know or never.
+    @JsonIgnore
+    @Column
+    private Long expirationTime;
 
     // database timestamps
     @Column(updatable = false)
@@ -257,5 +271,21 @@ public class Token implements Comparable<Token> {
 
     public void setId(long id) {
         this.id = id;
+    }
+
+    public TokenScope getScope() {
+        return scope;
+    }
+
+    public void setScope(TokenScope scope) {
+        this.scope = scope;
+    }
+
+    public Long getExpirationTime() {
+        return expirationTime;
+    }
+
+    public void setExpirationTime(Long expirationTime) {
+        this.expirationTime = expirationTime;
     }
 }
