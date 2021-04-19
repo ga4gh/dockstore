@@ -17,7 +17,10 @@
 package io.dockstore.webservice.jdbi;
 
 import java.util.List;
+import java.util.SortedSet;
 
+import io.dockstore.webservice.core.FileContent;
+import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.core.Version;
 import io.dockstore.webservice.core.database.VersionVerifiedPlatform;
 import io.dropwizard.hibernate.AbstractDAO;
@@ -29,8 +32,10 @@ import org.hibernate.query.Query;
  */
 public class VersionDAO<T extends Version> extends AbstractDAO<T> {
 
+    private final FileContentDAO fileContentDAO;
     public VersionDAO(SessionFactory sessionFactory) {
         super(sessionFactory);
+        this.fileContentDAO = new FileContentDAO(sessionFactory);
     }
 
     public T findById(Long id) {
@@ -38,6 +43,15 @@ public class VersionDAO<T extends Version> extends AbstractDAO<T> {
     }
 
     public long create(T tag) {
+        //avoid "A different object with the same identifier value was already associated with the session" by removing duplicate file content
+        SortedSet<SourceFile> sourceFiles = tag.getSourceFiles();
+        for (SourceFile file : sourceFiles) {
+            FileContent content = file.getFileContent() == null ? null : fileContentDAO.findById(file.getFileContent().getId());
+            if (content == null) {
+                content = fileContentDAO.persist(file.getFileContent());
+            }
+            file.setFileContent(content);
+        }
         return persist(tag).getId();
     }
 

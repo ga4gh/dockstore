@@ -47,6 +47,7 @@ import io.dockstore.webservice.helpers.SourceCodeRepoFactory;
 import io.dockstore.webservice.helpers.SourceCodeRepoInterface;
 import io.dockstore.webservice.helpers.StateManagerMode;
 import io.dockstore.webservice.jdbi.EventDAO;
+import io.dockstore.webservice.jdbi.FileContentDAO;
 import io.dockstore.webservice.jdbi.FileDAO;
 import io.dockstore.webservice.jdbi.FileFormatDAO;
 import io.dockstore.webservice.jdbi.LambdaEventDAO;
@@ -98,6 +99,7 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
 
     protected final String bitbucketClientSecret;
     protected final String bitbucketClientID;
+    private final FileContentDAO fileContentDAO;
 
     public AbstractWorkflowResource(HttpClient client, SessionFactory sessionFactory, EntryResource entryResource,
             DockstoreWebserviceConfiguration configuration) {
@@ -109,6 +111,7 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
         this.workflowDAO = new WorkflowDAO(sessionFactory);
         this.userDAO = new UserDAO(sessionFactory);
         this.fileDAO = new FileDAO(sessionFactory);
+        this.fileContentDAO = new FileContentDAO(sessionFactory);
         this.workflowVersionDAO = new WorkflowVersionDAO(sessionFactory);
         this.eventDAO = new EventDAO(sessionFactory);
         this.lambdaEventDAO = new LambdaEventDAO(sessionFactory);
@@ -332,6 +335,9 @@ public abstract class AbstractWorkflowResource<T extends Workflow> implements So
             createServicesAndVersionsFromDockstoreYml(dockstoreYaml12.getService(), repository, gitReference, installationId, user, dockstoreYml);
             createBioWorkflowsAndVersionsFromDockstoreYml(dockstoreYaml12.getWorkflows(), repository, gitReference, installationId, user, dockstoreYml);
             LambdaEvent lambdaEvent = createBasicEvent(repository, gitReference, username, LambdaEvent.LambdaEventType.PUSH);
+            // weird, need to persist file content manually? (not sure if this is the case, merge on 2021-04-19)
+            // workflows.forEach(workflow -> workflow.getWorkflowVersions().forEach(version -> version.getSourceFiles().forEach(file -> fileContentDAO.create(file.getFileContent()))));
+
             lambdaEventDAO.create(lambdaEvent);
             endRateLimit = gitHubSourceCodeRepo.getGhRateLimitQuietly();
             isSuccessful = true;

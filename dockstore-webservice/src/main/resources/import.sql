@@ -35,6 +35,8 @@ CREATE UNIQUE INDEX collection_name_index on collection (LOWER(name), organizati
 -- JPA doesn't seem to understand deferrable constraints, need to insert them this way
 ALTER TABLE tag ADD CONSTRAINT fk_tagVersionMetadata FOREIGN KEY(id) REFERENCES public.version_metadata (id) DEFERRABLE INITIALLY DEFERRED;
 ALTER TABLE workflowversion ADD CONSTRAINT fk_workflowVersionMetadata FOREIGN KEY(id) REFERENCES public.version_metadata (id) DEFERRABLE INITIALLY DEFERRED;
+ALTER TABLE sourcefile ADD CONSTRAINT filecontentsha1 FOREIGN KEY(sha1) REFERENCES public.filecontent (id) DEFERRABLE INITIALLY DEFERRED;
+
 
 -- cannot seem to define these due to inheritance
 ALTER TABLE tag ADD CONSTRAINT parentid_constraint FOREIGN KEY(parentid) REFERENCES tool (id) DEFERRABLE INITIALLY DEFERRED;

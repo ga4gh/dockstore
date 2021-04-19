@@ -12,6 +12,7 @@ if [ "${CIRCLECI-false}" = "true" ]; then
     createdb -U postgres webservice_test || true
     createdb -U postgres webservice_test_proposed || true
     rm dockstore-webservice/target/detected-migrations.xml || true
+    psql -U postgres -c 'create extension pgcrypto' webservice_test || true
 else
     ## uncomment/comment this section if database is running locally on postgres
     sudo -i -u postgres dropdb webservice_test || true
@@ -19,6 +20,7 @@ else
     sudo -i -u postgres createdb webservice_test || true
     sudo -i -u postgres createdb webservice_test_proposed || true
     rm dockstore-webservice/target/detected-migrations.xml || true
+    sudo -i -u postgres psql -c 'create extension pgcrypto' webservice_test || true
     ## uncomment/comment this section if running on docker
 #    docker exec -it -u postgres -e PGPASSWORD=dockstore postgres1 dropdb webservice_test || true
 #    docker exec -it -u postgres -e PGPASSWORD=dockstore postgres1 dropdb webservice_test_proposed || true
@@ -26,6 +28,7 @@ else
 #    docker exec -it -u postgres -e PGPASSWORD=dockstore postgres1 psql -c "create database webservice_test_proposed with owner = dockstore;" || true
 #    rm dockstore-webservice/target/detected-migrations.xml || true
 fi
+
 
 ## load up the old database based on current migration
 rm dockstore-webservice/target/dockstore-webservice-*sources.jar || true

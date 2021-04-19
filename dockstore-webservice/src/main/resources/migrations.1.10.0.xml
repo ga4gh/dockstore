@@ -63,6 +63,39 @@
     <changeSet id="removeOrphanVersionMetadata" author="gluu">
         <sql dbms="postgresql">delete from version_metadata vm where vm.id not in (select wv.id from workflowversion wv union select t.id from tag t);</sql>
     </changeSet>
+
+    <changeSet author="dyuen" id="deduplicate_content">
+        <createTable tableName="filecontent">
+            <column name="id" type="VARCHAR(255)">
+                <constraints primaryKey="true" primaryKeyName="filecontent_pkey"/>
+            </column>
+            <column name="content" type="TEXT"/>
+            <column name="dbcreatedate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+            <column name="dbupdatedate" type="TIMESTAMP WITHOUT TIME ZONE"/>
+        </createTable>
+        <addColumn tableName="sourcefile">
+            <column name="sha1" type="varchar(255 BYTE)"/>
+        </addColumn>
+
+        <!-- disable security to not skip frozen files -->
+        <sql dbms="postgresql">
+            alter table sourcefile disable row level security;
+        </sql>
+
+        <!-- copy over unique non-null content from sourcefile -->
+        <sql>with uniquecontent as (select content, min(dbcreatedate) as dbcreatedate, max(dbupdatedate) as dbupdatedate from sourcefile where content is not null group by content) insert into filecontent(id, content, dbcreatedate, dbupdatedate) select encode(digest(content, 'sha1'), 'hex'), content, dbcreatedate, dbupdatedate from uniquecontent</sql>
+        <!-- populate sha1 for main table -->
+        <sql>update sourcefile set sha1 = encode(digest(content, 'sha1'), 'hex')</sql>
+
+        <sql dbms="postgresql">
+            alter table sourcefile enable row level security;
+        </sql>
+        <dropColumn columnName="content" tableName="sourcefile"/>
+    </changeSet>
+
+    <changeSet author="dyuen" id="constrain_filecontent">
+        <addForeignKeyConstraint baseColumnNames="sha1" baseTableName="sourcefile" constraintName="filecontentsha1" deferrable="true" initiallyDeferred="true" onDelete="NO ACTION" onUpdate="NO ACTION" referencedColumnNames="id" referencedTableName="filecontent"/>
+    </changeSet>
     <changeSet author="gluu (generated)" id="addLicenseInformation">
         <addColumn tableName="service">
             <column name="licensename" type="varchar(255 BYTE)"/>

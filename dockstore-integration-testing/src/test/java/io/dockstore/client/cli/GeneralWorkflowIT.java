@@ -691,9 +691,9 @@ public class GeneralWorkflowIT extends BaseIT {
         assertFalse(sourceFiles.isEmpty());
         sourceFiles.forEach(s -> {
             assertTrue(s.isFrozen());
-            testingPostgres.runUpdateStatement("update sourcefile set content = 'foo' where id = " + s.getId());
+            testingPostgres.runUpdateStatement("update sourcefile set sha1 = 'foo' where id = " + s.getId());
             final String content = testingPostgres
-                .runSelectStatement("select content from sourcefile where id = " + s.getId(), String.class);
+                .runSelectStatement("select sha1 from sourcefile where id = " + s.getId(), String.class);
             assertNotEquals("foo", content);
         });
 

@@ -18,20 +18,39 @@ package io.dockstore.webservice.jdbi;
 
 import java.util.List;
 
+import io.dockstore.webservice.core.FileContent;
 import io.dockstore.webservice.core.SourceFile;
 import io.dropwizard.hibernate.AbstractDAO;
+import org.hibernate.HibernateException;
 import org.hibernate.SessionFactory;
 
 /**
  * @author xliu
  */
 public class FileDAO extends AbstractDAO<SourceFile> {
+    private final FileContentDAO fileContentDAO;
+
     public FileDAO(SessionFactory sessionFactory) {
         super(sessionFactory);
+        this.fileContentDAO = new FileContentDAO(sessionFactory);
     }
 
     public SourceFile findById(Long id) {
         return get(id);
+    }
+
+    @Override
+    protected SourceFile persist(SourceFile file) throws HibernateException {
+        // intercept creation of new content to de-duplicate
+        if (file.getFileContent() != null) {
+            FileContent content = fileContentDAO.findById(file.getFileContent().getId());
+            if (content == null) {
+                content = fileContentDAO.persist(file.getFileContent());
+            }
+            file.setFileContent(content);
+        }
+        SourceFile persist = super.persist(file);
+        return findById(persist.getId());
     }
 
     public long create(SourceFile file) {

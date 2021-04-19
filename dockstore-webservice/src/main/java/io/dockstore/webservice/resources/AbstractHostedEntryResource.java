@@ -246,10 +246,8 @@ public abstract class AbstractHostedEntryResource<T extends Entry<T, U>, U exten
 
         String invalidFileNames = String.join(",", invalidFileNames(version));
         if (!invalidFileNames.isEmpty()) {
-            StringBuilder message = new StringBuilder();
-            message.append("Files must have a name. Unable to save new version due to the following files: ");
-            message.append(invalidFileNames);
-            throw new CustomWebApplicationException(message.toString(), HttpStatus.SC_BAD_REQUEST);
+            String message = "Files must have a name. Unable to save new version due to the following files: " + invalidFileNames;
+            throw new CustomWebApplicationException(message, HttpStatus.SC_BAD_REQUEST);
         }
 
         validatedVersion.setValid(true); // Hosted entry versions must be valid to save

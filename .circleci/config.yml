@@ -171,6 +171,7 @@ jobs:
             sudo apt install -y postgresql-client
       - install-git-secrets
       - setup_postgres
+            psql -c 'create extension pgcrypto;' -U postgres webservice_test
       - run:
           name: run the actual tests
           command: mvn -B org.jacoco:jacoco-maven-plugin:report org.jacoco:jacoco-maven-plugin:report-aggregate clean install -Punit-tests,coverage -ntp

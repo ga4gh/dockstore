@@ -23,7 +23,9 @@ import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 
+import javax.persistence.CascadeType;
 import javax.persistence.Column;
 import javax.persistence.Convert;
 import javax.persistence.ElementCollection;
@@ -37,6 +39,7 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
+import javax.persistence.ManyToOne;
 import javax.persistence.MapKeyColumn;
 import javax.persistence.NamedQueries;
 import javax.persistence.NamedQuery;
@@ -48,6 +51,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.google.common.base.MoreObjects;
 import com.google.common.collect.ComparisonChain;
 import io.dockstore.common.DescriptorLanguage;
+import io.dockstore.webservice.helpers.FileFormatHelper;
 import io.dockstore.webservice.helpers.ZipSourceFileHelper;
 import io.swagger.annotations.ApiModel;
 import io.swagger.annotations.ApiModelProperty;
@@ -86,9 +90,11 @@ public class SourceFile implements Comparable<SourceFile> {
     @Schema(description = "Enumerates the type of file", required = true)
     private DescriptorLanguage.FileType type;
 
-    @Column(columnDefinition = "TEXT")
-    @ApiModelProperty(value = "Cache for the contents of the target file", position = 2)
-    private String content;
+    //TODO sha1 duplicates part of checksums
+    @ManyToOne(cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+    @JoinColumn(name = "sha1", referencedColumnName = "id")
+    @JsonIgnore
+    private FileContent fileContent;
 
     @Column(nullable = false, columnDefinition = "TEXT")
     @ApiModelProperty(value = "Path to sourcefile relative to its parent", required = true, position = 3)
@@ -150,12 +156,30 @@ public class SourceFile implements Comparable<SourceFile> {
         this.type = type;
     }
 
+    @ApiModelProperty(value = "Cache for the contents of the target file", position = 2)
     public String getContent() {
-        return content;
+        if (fileContent != null) {
+            return fileContent.getContent();
+        } else {
+            return null;
+        }
+    }
+
+    @JsonIgnore
+    public FileContent getFileContent() {
+        return fileContent;
+    }
+
+    @JsonIgnore
+    public void setFileContent(FileContent fileContent) {
+        this.fileContent = fileContent;
     }
 
     public void setContent(String content) {
-        this.content = content;
+        String calcSha1 = FileFormatHelper.calcSHA1(content).orElse(null);
+        if (fileContent == null || !Objects.equals(fileContent.getId(), calcSha1)) {
+            this.fileContent = new FileContent(calcSha1, content);
+        }
     }
 
     public String getPath() {
