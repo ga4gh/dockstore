@@ -29,7 +29,8 @@ public enum Registry {
     DOCKER_HUB("registry.hub.docker.com", "Docker Hub", "https://hub.docker.com/", false, false),
     GITLAB("registry.gitlab.com", "GitLab", "https://gitlab.com/", false, false),
     AMAZON_ECR(null, "Amazon ECR", null, true, true),
-    SEVEN_BRIDGES(null, "Seven Bridges", null, true, true);
+    SEVEN_BRIDGES(null, "Seven Bridges", null, true, true),
+    GITHUB_CONTAINER_REGISTRY("ghcr.io", "GitHub Container Registry", "https://ghcr.io/", false, false);
 
     /**
      * this name is what is actually used in commands like docker pull

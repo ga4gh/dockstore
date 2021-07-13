@@ -1332,7 +1332,7 @@ public class WorkflowResource extends AbstractWorkflowResource<Workflow>
                         // Check that a snapshot can occur (all images are referenced by tag or digest)
                         lInterface.checkSnapshotImages(existingTag.getName(), toolsJSONTable.get());
 
-                        Set<Image> images = lInterface.getImagesFromRegistry(toolsJSONTable.get());
+                        Set<Image> images = lInterface.getImagesFromRegistry(toolsJSONTable.get(), client);
                         existingTag.getImages().addAll(images);
                     }
 

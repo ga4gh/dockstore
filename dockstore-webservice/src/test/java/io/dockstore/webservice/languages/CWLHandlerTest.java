@@ -138,6 +138,13 @@ public class CWLHandlerTest {
                 handler.getURLFromEntry("012345678912.dkr.ecr.us-east-1.amazonaws.com/foo@sha256:123456789abc", toolDAO,
                         DockerSpecifier.DIGEST));
 
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar", toolDAO, DockerSpecifier.NO_TAG));
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar:1", toolDAO, DockerSpecifier.TAG));
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar@sha256:123456789abc", toolDAO, DockerSpecifier.DIGEST));
+
         // When toolDAO.findAllByPath() returns null/empty
         when(toolDAO.findAllByPath(Mockito.anyString(), Mockito.anyBoolean())).thenReturn(null);
         Assert.assertEquals("https://quay.io/repository/foo/bar",
@@ -161,6 +168,13 @@ public class CWLHandlerTest {
         Assert.assertEquals("https://012345678912.dkr.ecr.us-east-1.amazonaws.com/foo",
                 handler.getURLFromEntry("012345678912.dkr.ecr.us-east-1.amazonaws.com/foo@sha256:123456789abc", toolDAO,
                         DockerSpecifier.DIGEST));
+
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar", toolDAO, DockerSpecifier.NO_TAG));
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar:1", toolDAO, DockerSpecifier.TAG));
+        Assert.assertEquals("https://ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar@sha256:123456789abc", toolDAO, DockerSpecifier.DIGEST));
 
         // When toolDAO.findAllByPath() returns non-empty List<Tool>
         when(toolDAO.findAllByPath(Mockito.anyString(), Mockito.anyBoolean())).thenReturn(List.of(Mockito.mock(Tool.class)));
@@ -187,6 +201,13 @@ public class CWLHandlerTest {
         Assert.assertEquals("https://www.dockstore.org/containers/012345678912.dkr.ecr.us-east-1.amazonaws.com/foo",
                 handler.getURLFromEntry("012345678912.dkr.ecr.us-east-1.amazonaws.com/foo@sha256:123456789", toolDAO,
                         DockerSpecifier.DIGEST));
+
+        Assert.assertEquals("https://www.dockstore.org/containers/ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar", toolDAO, DockerSpecifier.NO_TAG));
+        Assert.assertEquals("https://www.dockstore.org/containers/ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar:1", toolDAO, DockerSpecifier.TAG));
+        Assert.assertEquals("https://www.dockstore.org/containers/ghcr.io/foo/bar",
+                handler.getURLFromEntry("ghcr.io/foo/bar@sha256:123456789abc", toolDAO, DockerSpecifier.DIGEST));
     }
 
     @Test

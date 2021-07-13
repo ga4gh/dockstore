@@ -6762,6 +6762,7 @@ definitions:
         - "GITLAB"
         - "AMAZON_ECR"
         - "SEVEN_BRIDGES"
+        - "GITHUB_CONTAINER_REGISTRY"
     description: "This describes one entry in the dockstore. Logically, this currently\
       \ means one tuple of registry (either quay or docker hub), organization, image\
       \ name, and toolname which can be\n * associated with CWL and Dockerfile documents"
@@ -7081,6 +7082,7 @@ definitions:
         - "GITLAB"
         - "AMAZON_ECR"
         - "SEVEN_BRIDGES"
+        - "GITHUB_CONTAINER_REGISTRY"
       architecture:
         type: "string"
         position: 6
