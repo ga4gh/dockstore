@@ -196,6 +196,18 @@
       "toolname": {
         "type": "text"
       },
+      "organization": {
+        "type": "keyword"
+      },
+      "repository": {
+        "type": "keyword"
+      },
+      "workflowName": {
+        "type": "keyword"
+      },
+      "workflow_path": {
+        "type": "keyword"
+      },
       "users": {
         "properties": {
           "avatarUrl": {

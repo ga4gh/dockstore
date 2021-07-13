@@ -35,9 +35,12 @@ import io.dockstore.common.CommonTestUtilities;
 import io.dockstore.common.ConfidentialTest;
 import io.dockstore.common.DescriptorLanguage;
 import io.dockstore.common.SourceControl;
+import io.dockstore.openapi.client.api.Ga4Ghv20Api;
 import io.dockstore.openapi.client.api.LambdaEventsApi;
+import io.dockstore.openapi.client.model.Tool;
 import io.dockstore.webservice.core.SourceFile;
 import io.dockstore.webservice.jdbi.FileDAO;
+import io.swagger.api.impl.ToolsImplCommon;
 import io.swagger.client.ApiClient;
 import io.swagger.client.ApiException;
 import io.swagger.client.api.UsersApi;
@@ -745,6 +748,7 @@ public class WebhookIT extends BaseIT {
     public void testTools() throws Exception {
         CommonTestUtilities.cleanStatePrivate2(SUPPORT, false);
         final ApiClient webClient = getWebClient(BasicIT.USER_2_USERNAME, testingPostgres);
+        final io.dockstore.openapi.client.ApiClient openApiClient = getOpenAPIWebClient(BasicIT.USER_2_USERNAME, testingPostgres);
         WorkflowsApi client = new WorkflowsApi(webClient);
 
         client.handleGitHubRelease(toolAndWorkflowRepo, BasicIT.USER_2_USERNAME, "refs/heads/main", installationId);
@@ -784,5 +788,20 @@ public class WebhookIT extends BaseIT {
         Validation toolValidation = invalidVersion.getValidations().stream().filter(validation -> validation.getType().equals(Validation.TypeEnum.DOCKSTORE_CWL)).findFirst().get();
         assertFalse(toolValidation.isValid());
         assertTrue(toolValidation.getMessage().contains("Did you mean to register a workflow"));
+
+        testingPostgres.runUpdateStatement("update apptool set ispublished = 't' where id = " + appTool.getId());
+        testingPostgres.runUpdateStatement("update workflow set ispublished = 't' where id = " + workflow.getId());
+
+        Ga4Ghv20Api ga4Ghv20Api = new Ga4Ghv20Api(openApiClient);
+        final List<Tool> tools = ga4Ghv20Api.toolsGet(null, null, null, null, null, null, null, null, null, null, null, null, null);
+        assertEquals(2, tools.size());
+
+        final Tool tool = ga4Ghv20Api.toolsIdGet("github.com/DockstoreTestUser2/test-workflows-and-tools");
+        assertNotNull(tool);
+        assertEquals("CommandLineTool", tool.getToolclass().getDescription());
+
+        final Tool trsWorkflow = ga4Ghv20Api.toolsIdGet(ToolsImplCommon.WORKFLOW_PREFIX + "/github.com/DockstoreTestUser2/test-workflows-and-tools");
+        assertNotNull(trsWorkflow);
+        assertEquals("Workflow", trsWorkflow.getToolclass().getDescription());
     }
 }

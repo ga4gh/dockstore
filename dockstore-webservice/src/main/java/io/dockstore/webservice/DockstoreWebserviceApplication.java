@@ -72,6 +72,7 @@ import io.dockstore.webservice.helpers.PersistenceExceptionMapper;
 import io.dockstore.webservice.helpers.PublicStateManager;
 import io.dockstore.webservice.helpers.TransactionExceptionMapper;
 import io.dockstore.webservice.helpers.statelisteners.TRSListener;
+import io.dockstore.webservice.jdbi.AppToolDAO;
 import io.dockstore.webservice.jdbi.DeletedUsernameDAO;
 import io.dockstore.webservice.jdbi.EventDAO;
 import io.dockstore.webservice.jdbi.FileDAO;
@@ -328,6 +329,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         final ToolDAO toolDAO = new ToolDAO(hibernate.getSessionFactory());
         final FileDAO fileDAO = new FileDAO(hibernate.getSessionFactory());
         final WorkflowDAO workflowDAO = new WorkflowDAO(hibernate.getSessionFactory());
+        final AppToolDAO appToolDAO = new AppToolDAO(hibernate.getSessionFactory());
         final TagDAO tagDAO = new TagDAO(hibernate.getSessionFactory());
         final EventDAO eventDAO = new EventDAO(hibernate.getSessionFactory());
         final VersionDAO versionDAO = new VersionDAO(hibernate.getSessionFactory());
@@ -398,6 +400,7 @@ public class DockstoreWebserviceApplication extends Application<DockstoreWebserv
         ToolsApiExtendedServiceImpl.setStateManager(publicStateManager);
         ToolsApiExtendedServiceImpl.setToolDAO(toolDAO);
         ToolsApiExtendedServiceImpl.setWorkflowDAO(workflowDAO);
+        ToolsApiExtendedServiceImpl.setAppToolDAO(appToolDAO);
         ToolsApiExtendedServiceImpl.setConfig(configuration);
 
         DOIGeneratorFactory.setConfig(configuration);

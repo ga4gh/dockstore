@@ -21,6 +21,7 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.gson.Gson;
 import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.DockstoreWebserviceConfiguration;
+import io.dockstore.webservice.core.AppTool;
 import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.Label;
@@ -171,7 +172,7 @@ public class ElasticListener implements StateListenerInterface {
         }
         // sort entries into workflows and tools
         List<Entry> workflowsEntryList = entries.stream().filter(entry -> (entry instanceof BioWorkflow)).collect(Collectors.toList());
-        List<Entry> toolsEntryList = entries.stream().filter(entry -> (entry instanceof Tool)).collect(Collectors.toList());
+        List<Entry> toolsEntryList = entries.stream().filter(entry -> (entry instanceof Tool) || (entry instanceof AppTool)).collect(Collectors.toList());
         if (!workflowsEntryList.isEmpty()) {
             postBulkUpdate(WORKFLOWS_INDEX, workflowsEntryList);
         }

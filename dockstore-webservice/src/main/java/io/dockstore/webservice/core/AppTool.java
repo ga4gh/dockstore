@@ -18,11 +18,16 @@ package io.dockstore.webservice.core;
 import io.dockstore.common.EntryType;
 import io.swagger.annotations.ApiModel;
 import javax.persistence.Entity;
+import javax.persistence.NamedQueries;
+import javax.persistence.NamedQuery;
 import javax.persistence.Table;
 
 @ApiModel(value = "AppTool", description = "This describes one app tool in dockstore as a special degenerate case of a workflow", parent = Workflow.class)
 @Entity
 @Table(name = "apptool")
+@NamedQueries({
+    @NamedQuery(name = "io.dockstore.webservice.core.AppTool.findAllPublished", query = "SELECT a FROM AppTool a WHERE a.isPublished = true")
+})
 public class AppTool extends Workflow {
 
     @Override

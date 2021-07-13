@@ -32,6 +32,7 @@ import io.dockstore.common.DescriptorLanguage;
 import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.DockstoreWebserviceApplication;
 import io.dockstore.webservice.DockstoreWebserviceConfiguration;
+import io.dockstore.webservice.core.AppTool;
 import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.Service;
@@ -204,6 +205,9 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
         }
         if (parsedID.toolType() == ParsedRegistryID.ToolType.TOOL) {
             entry = toolDAO.findByPath(entryPath, user.isEmpty());
+            if (entry == null) {
+                entry = workflowDAO.findByPath(entryPath, user.isEmpty(), AppTool.class).orElse(null);
+            }
         } else if (parsedID.toolType() == ParsedRegistryID.ToolType.WORKFLOW) {
             entry = workflowDAO.findByPath(entryPath, user.isEmpty(), BioWorkflow.class).orElse(null);
         } else if (parsedID.toolType() == ParsedRegistryID.ToolType.SERVICE) {
@@ -424,13 +428,14 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
             // user didn't provide a descriptor type or the one they provided matches to CWL or WDL
             if (toolClass == null || COMMAND_LINE_TOOL.equalsIgnoreCase(toolClass)) {
                 if (descriptorType == null  || descriptorLanguage == DescriptorLanguage.WDL || descriptorLanguage == DescriptorLanguage.CWL) {
+                    all.addAll(workflowDAO.filterTrsToolsGet(AppTool.class, descriptorLanguage, registry, organization, name, toolname, description, author, checker));
                     all.addAll(toolDAO.findAllPublished());
                 }
 
             }
             if (toolClass == null || WORKFLOW.equalsIgnoreCase(toolClass)) {
                 // filter published workflows using criteria builder
-                all.addAll(workflowDAO.filterTrsToolsGet(descriptorLanguage, registry, organization, name, toolname, description, author, checker));
+                all.addAll(workflowDAO.filterTrsToolsGet(BioWorkflow.class, descriptorLanguage, registry, organization, name, toolname, description, author, checker));
             }
         }
         return all;
@@ -467,6 +472,8 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
      */
     private Response getFileByToolVersionID(String registryId, String versionIdParam, DescriptorLanguage.FileType type, String parameterPath,
         boolean unwrap, Optional<User> user) {
+        Response.StatusType fileNotFoundStatus = getExtendedStatus(Status.NOT_FOUND,
+            "version found, but file not found (bad filename, invalid file, etc.)");
 
         // if a version is provided, get that version, otherwise return the newest
         ParsedRegistryID parsedID = null;
@@ -571,6 +578,8 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
                     containerfilesList.add(dockerfile);
                     return Response.status(Status.OK).type(unwrap ? MediaType.TEXT_PLAIN : MediaType.APPLICATION_JSON)
                         .entity(unwrap ? dockerfile.getContent() : containerfilesList).build();
+                } else {
+                    return Response.status(fileNotFoundStatus).build();
                 }
             }
             String path;
@@ -609,9 +618,7 @@ public class ToolsApiServiceImpl extends ToolsApiService implements Authenticate
                     .entity(unwrap ? sourceFile.getContent() : toolDescriptor).build();
             }
         }
-        Response.StatusType status = getExtendedStatus(Status.NOT_FOUND,
-            "version found, but file not found (bad filename, invalid file, etc.)");
-        return Response.status(status).build();
+        return Response.status(fileNotFoundStatus).build();
     }
 
     public static List<Checksum> convertToTRSChecksums(final SourceFile sourceFile) {

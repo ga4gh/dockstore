@@ -31,6 +31,7 @@ import io.dockstore.webservice.core.WorkflowVersion;
 import io.dockstore.webservice.helpers.ElasticSearchHelper;
 import io.dockstore.webservice.helpers.PublicStateManager;
 import io.dockstore.webservice.helpers.statelisteners.ElasticListener;
+import io.dockstore.webservice.jdbi.AppToolDAO;
 import io.dockstore.webservice.jdbi.ToolDAO;
 import io.dockstore.webservice.jdbi.WorkflowDAO;
 import io.openapi.api.impl.ToolsApiServiceImpl;
@@ -81,6 +82,7 @@ public class ToolsApiExtendedServiceImpl extends ToolsExtendedApiService {
 
     private static ToolDAO toolDAO = null;
     private static WorkflowDAO workflowDAO = null;
+    private static AppToolDAO appToolDAO = null;
     private static DockstoreWebserviceConfiguration config = null;
     private static PublicStateManager publicStateManager = null;
 
@@ -96,6 +98,10 @@ public class ToolsApiExtendedServiceImpl extends ToolsExtendedApiService {
         ToolsApiExtendedServiceImpl.workflowDAO = workflowDAO;
     }
 
+    public static void setAppToolDAO(AppToolDAO appToolDAO) {
+        ToolsApiExtendedServiceImpl.appToolDAO = appToolDAO;
+    }
+
     public static void setConfig(DockstoreWebserviceConfiguration config) {
         ToolsApiExtendedServiceImpl.config = config;
     }
@@ -109,6 +115,7 @@ public class ToolsApiExtendedServiceImpl extends ToolsExtendedApiService {
         final List<Entry> published = new ArrayList<>();
         published.addAll(toolDAO.findAllPublished());
         published.addAll(workflowDAO.findAllPublished());
+        published.addAll(appToolDAO.finalAllPublished());
         published.sort(Comparator.comparing(Entry::getGitUrl));
         return published;
     }

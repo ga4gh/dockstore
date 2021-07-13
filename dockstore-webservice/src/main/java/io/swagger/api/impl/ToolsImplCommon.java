@@ -23,6 +23,7 @@ import io.dockstore.common.Registry;
 import io.dockstore.webservice.CustomWebApplicationException;
 import io.dockstore.webservice.DockstoreWebserviceApplication;
 import io.dockstore.webservice.DockstoreWebserviceConfiguration;
+import io.dockstore.webservice.core.AppTool;
 import io.dockstore.webservice.core.BioWorkflow;
 import io.dockstore.webservice.core.Entry;
 import io.dockstore.webservice.core.Image;
@@ -321,21 +322,24 @@ public final class ToolsImplCommon {
         List<Checksum> trsChecksums = new ArrayList<>();
         if (version.getImages() != null && !version.getImages().isEmpty()) {
             version.getImages().forEach(image -> {
-                ImageData data = new ImageData();
-                image.getChecksums().forEach(checksum -> {
-                    Checksum trsChecksum = new Checksum();
-                    trsChecksum.setType(DOCKER_IMAGE_SHA_TYPE_FOR_TRS);
-                    trsChecksum.setChecksum(checksum.getChecksum());
-                    trsChecksums.add(trsChecksum);
-                });
-                //TODO: for now, all container images are Docker based
-                data.setImageType(ImageType.DOCKER);
-                data.setSize(image.getSize());
-                data.setUpdated(image.getImageUpdateDate());
-                data.setRegistryHost(image.getImageRegistry().getDockerPath());
-                data.setImageName(constructImageName(image));
-                data.setChecksum(trsChecksums);
-                toolVersion.getImages().add(data);
+                if (image.getImageRegistry() != null) {
+                    // avoid exception on null image registry
+                    ImageData data = new ImageData();
+                    image.getChecksums().forEach(checksum -> {
+                        Checksum trsChecksum = new Checksum();
+                        trsChecksum.setType(DOCKER_IMAGE_SHA_TYPE_FOR_TRS);
+                        trsChecksum.setChecksum(checksum.getChecksum());
+                        trsChecksums.add(trsChecksum);
+                    });
+                    //TODO: for now, all container images are Docker based
+                    data.setImageType(ImageType.DOCKER);
+                    data.setSize(image.getSize());
+                    data.setUpdated(image.getImageUpdateDate());
+                    data.setRegistryHost(image.getImageRegistry().getDockerPath());
+                    data.setImageName(constructImageName(image));
+                    data.setChecksum(trsChecksums);
+                    toolVersion.getImages().add(data);
+                }
             });
         } else {
             toolVersion.getImages().add(createDummyImageData(castedContainer));
@@ -437,6 +441,8 @@ public final class ToolsImplCommon {
     private static String getNewId(Entry<?, ?> container) {
         if (container instanceof io.dockstore.webservice.core.Tool) {
             return ((io.dockstore.webservice.core.Tool)container).getToolPath();
+        } else if (container instanceof AppTool) {
+            return ((AppTool) container).getWorkflowPath();
         } else if (container instanceof Workflow) {
             Workflow workflow = (Workflow)container;
             DescriptorLanguage descriptorType = workflow.getDescriptorType();
@@ -486,7 +492,7 @@ public final class ToolsImplCommon {
         tool.setMetaVersion(container.getLastUpdated() != null ? container.getLastUpdated().toString() : new Date(0).toString());
 
         // Set type
-        if (container instanceof io.dockstore.webservice.core.Tool) {
+        if (container instanceof io.dockstore.webservice.core.Tool || container instanceof AppTool) {
             tool.setToolclass(io.openapi.api.impl.ToolClassesApiServiceImpl.getCommandLineToolClass());
         } else if (container instanceof BioWorkflow) {
             tool.setToolclass(io.openapi.api.impl.ToolClassesApiServiceImpl.getWorkflowClass());

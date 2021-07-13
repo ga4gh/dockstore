@@ -138,7 +138,7 @@ public abstract class EntryDAO<T extends Entry> extends AbstractDockstoreDAO<T> 
         return uniqueResult(this.currentSession().getNamedQuery("Entry.getGenericEntryById").setParameter("id", id));
     }
 
-    public Entry<? extends Entry, ? extends Version> getGenericEntryByAlias(String alias) {
+    public Entry<? extends Entry, ? extends Version>  getGenericEntryByAlias(String alias) {
         return uniqueResult(this.currentSession().getNamedQuery("Entry.getGenericEntryByAlias").setParameter("alias", alias));
     }
 
